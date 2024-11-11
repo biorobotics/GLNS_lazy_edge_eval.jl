@@ -45,7 +45,7 @@ function read_file(filename)
     parse_state = "UNKNOWN_FORMAT"
     data_type = ""
     data_format = ""
-    dist = zeros(Int64, 0, 0)
+    dist = zeros(Int64, 0, 0, 2)
     sets = Any[]
     vid00 = vid01 = 1
     coords = Any[]
@@ -77,7 +77,7 @@ function read_file(filename)
             elseif occursin(r"^\s*TYPE\s*:\s*\w+\s*$", uppercase(line))
             elseif occursin(r"^\s*DIMENSION\s*:\s*\d+\s*$", uppercase(line))
                 num_vertices = parse(Int64, value)
-                dist = zeros(Int64, num_vertices, num_vertices)
+                dist = zeros(Int64, num_vertices, num_vertices, 2)
             elseif occursin(r"^\s*GTSP_SETS\s*:\s*\d+\s*$", uppercase(line))
                 num_sets = parse(Int64, value)
             elseif occursin(r"^\s*EDGE_WEIGHT_TYPE\s*:\s*\w+\s*$", uppercase(line))
@@ -100,7 +100,12 @@ function read_file(filename)
                     cost = parse(Int64, x)
                     # tested
                     if data_format == "FULL_MATRIX"
-                        dist[vid00, vid01] = cost
+                        if cost < 0
+                            dist[vid00, vid01,1] = 1
+                            dist[vid00, vid01,2] = 0
+                        else
+                            dist[vid00, vid01,2] = cost
+                        end
                         vid01 += 1
                         if vid01 > num_vertices
                             vid00 += 1

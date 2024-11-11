@@ -44,7 +44,7 @@ function solver(problem_instance, client_socket; args...)
 	  		     :cold_trial => 1,
 				 :total_iter => 0,
 				 :print_time => init_time)
-	lowest = Tour(Int64[], typemax(Int64))
+	lowest = Tour(Int64[], [typemax(Int64), typemax(Int64)])
 	start_time = time_ns()
 	# compute set distances which will be helpful
 	setdist = set_vertex_dist(dist, num_sets, membership)
@@ -65,10 +65,17 @@ function solver(problem_instance, client_socket; args...)
 		while count[:warm_trial] <= param[:warm_trials]
 			iter_count = 1
 			current = Tour(copy(best.tour), best.cost)
-			temperature = 1.442 * param[:accept_percentage] * best.cost
-			# accept a solution with 50% higher cost with 0.05% change after num_iterations.
-			cooling_rate = ((0.0005 * lowest.cost)/(param[:accept_percentage] *
-									current.cost))^(1/param[:num_iterations])
+      if best.cost[1] != 0
+        temperature = 1.442 * param[:accept_percentage] * best.cost[1]
+        # accept a solution with 50% higher cost with 0.05% change after num_iterations.
+        cooling_rate = ((0.0005 * lowest.cost[1])/(param[:accept_percentage] *
+                    current.cost[1]))^(1/param[:num_iterations])
+      else
+        temperature = 1.442 * param[:accept_percentage] * best.cost[2]
+        # accept a solution with 50% higher cost with 0.05% change after num_iterations.
+        cooling_rate = ((0.0005 * lowest.cost[2])/(param[:accept_percentage] *
+                    current.cost[2]))^(1/param[:num_iterations])
+      end
 
 			if count[:warm_trial] > 0	  # if warm restart, then use lower temperature
         temperature *= cooling_rate^(param[:num_iterations]/2)
@@ -104,11 +111,11 @@ function solver(problem_instance, client_socket; args...)
 				end
 
 				# if we've come in under budget, or we're out of time, then exit
-			  if best.cost <= param[:budget] || time() - init_time > param[:max_time]
+			  if (best.cost[1] == 0 && best.cost[2] <= param[:budget]) || time() - init_time > param[:max_time]
 					param[:timeout] = (time() - init_time > param[:max_time])
-					param[:budget_met] = (best.cost <= param[:budget])
+					param[:budget_met] = (best.cost[2] <= param[:budget])
 					timer = (time_ns() - start_time)/1.0e9
-					lowest.cost > best.cost && (lowest = best)
+          lowest.cost > best.cost && (lowest = best)
 					print_best(count, param, best, lowest, init_time)
 					print_summary(lowest, timer, membership, param)
 					return
@@ -125,7 +132,7 @@ function solver(problem_instance, client_socket; args...)
 			count[:latest_improvement] = 1
 			count[:first_improvement] = false
 		end
-		lowest.cost > best.cost && (lowest = best)
+    lowest.cost > best.cost && (lowest = best)
 		count[:warm_trial] = 0
 		count[:cold_trial] += 1
 

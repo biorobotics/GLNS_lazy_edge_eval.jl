@@ -20,7 +20,7 @@
 """
 mutable struct Tour
 	tour::Array{Int64,1}
-	cost::Int64
+	cost::Array{Int64,1}
 end
 
 """ return the vertex before tour[i] on tour """
@@ -67,38 +67,38 @@ end
 
 
 struct Distsv
-	set_vert::Array{Int64, 2}
-	vert_set::Array{Int64,2}
-	min_sv::Array{Int64, 2}
+	set_vert::Array{Int64, 3}
+	vert_set::Array{Int64,3}
+	min_sv::Array{Int64, 3}
 end
 
 
-function set_vertex_dist(dist::Array{Int64, 2}, num_sets::Int, member::Array{Int64,1})
+function set_vertex_dist(dist::Array{Int64, 3}, num_sets::Int, member::Array{Int64,1})
     """
 	Computes the minimum distance between each set and each vertex
 	Also compute the minimum distance from a set to a vertex, ignoring direction
 	This is used in insertion to choose the next set.
 	"""
     numv = size(dist, 1)
-    dist_set_vert = typemax(Int64) * ones(Int64, num_sets, numv)
-	mindist = typemax(Int64) * ones(Int64, num_sets, numv)
-	dist_vert_set = typemax(Int64) * ones(Int64, numv, num_sets)
+    dist_set_vert = typemax(Int64) * ones(Int64, num_sets, numv, 2)
+	mindist = typemax(Int64) * ones(Int64, num_sets, numv, 2)
+	dist_vert_set = typemax(Int64) * ones(Int64, numv, num_sets, 2)
 
 	for i = 1:numv
         for j = 1:numv
 			set = member[j]
-			if dist[j,i] < dist_set_vert[set, i]
-				dist_set_vert[set, i] = dist[j,i]
+			if dist[j,i,:] < dist_set_vert[set, i,:]
+				dist_set_vert[set, i, :] = dist[j,i, :]
 			end
-			if dist[j,i] < mindist[set, i]  # dist from set containing j to vertex i
-				mindist[set, i] = dist[j, i]
+			if dist[j,i,:] < mindist[set, i,:]  # dist from set containing j to vertex i
+				mindist[set, i,:] = dist[j, i,:]
 			end
 			set = member[i]
-			if dist[j,i] < dist_vert_set[j, set]  # dist from j to set containing i
-				dist_vert_set[j, set] = dist[j,i]
+			if dist[j,i,:] < dist_vert_set[j, set,:]  # dist from j to set containing i
+				dist_vert_set[j, set,:] = dist[j,i,:]
 			end
-			if dist[j,i] < mindist[set,j] # record as distance from set containing i to j
-				mindist[set,j] = dist[j,i]
+			if dist[j,i,:] < mindist[set,j,:] # record as distance from set containing i to j
+				mindist[set,j,:] = dist[j,i,:]
 			end
 		end
 	end
@@ -107,19 +107,19 @@ end
 
 
 
-function set_vertex_distance(dist::Array{Int64, 2}, sets::Array{Any, 1})
+function set_vertex_distance(dist::Array{Int64, 3}, sets::Array{Any, 1})
     """
 	Computes the minimum distance between each set and each vertex
 	"""
     numv = size(dist, 1)
     nums = length(sets)
-    dist_set_vert = typemax(Int64) * ones(Int64, nums, numv)
+    dist_set_vert = typemax(Int64) * ones(Int64, nums, numv, 2)
 	# dist_vert_set = typemax(Int64) * ones(Int64, numv, nums)
     for i = 1:nums
         for j = 1:numv
 			for k in sets[i]
-				newdist = min(dist[k, j], dist[j, k])
-				dist_set_vert[i,j] > newdist && (dist_set_vert[i,j] = newdist)
+				newdist = min(dist[k, j,:], dist[j, k,:])
+				dist_set_vert[i,j,:] > newdist && (dist_set_vert[i,j,:] = newdist)
 			end
         end
     end
@@ -148,11 +148,13 @@ end
 """
 decide whether or not to accept a trial based on simulated annealing criteria
 """
-function accepttrial(trial_cost::Int64, current_cost::Int64, temperature::Float64)
+function accepttrial(trial_cost::Array{Int64,1}, current_cost::Array{Int64,1}, temperature::Float64)
     if trial_cost <= current_cost
         accept_prob = 2.0
-	else
-        accept_prob = exp((current_cost - trial_cost)/temperature)
+	elseif trial_cost[1] > current_cost[1]
+        accept_prob = exp((current_cost[1] - trial_cost[1])/temperature)
+  else
+        accept_prob = exp((current_cost[2] - trial_cost[2])/temperature)
     end
     return (rand() < accept_prob ? true : false)
 end
@@ -161,7 +163,7 @@ end
 """
 decide whether or not to accept a trial based on simple probability
 """
-function accepttrial_noparam(trial_cost::Int64, current_cost::Int64, prob_accept::Float64)
+function accepttrial_noparam(trial_cost::Array{Int64,1}, current_cost::Array{Int64,1}, prob_accept::Float64)
     if trial_cost <= current_cost
         return true
 	end
@@ -172,7 +174,7 @@ end
 ###################################################
 ################ Tour checks ######################
 
-@inline function eval_edges!(tour::Tour, dist::Array{Int64,2}, confirmed_dist::Array{Bool,2}, client_socket::TCPSocket, setdist::Distsv, num_sets::Int, member::Array{Int64,1})
+@inline function eval_edges!(tour::Tour, dist::Array{Int64,3}, confirmed_dist::Array{Bool,2}, client_socket::TCPSocket, setdist::Distsv, num_sets::Int, member::Array{Int64,1})
     # Get unevaluated edges
     msg = ""
     unevaluated_edges = Array{Tuple{Int, Int}}(undef, 0)
@@ -190,11 +192,16 @@ end
     msg = msg[1:end - 1]
 
     write(client_socket, msg)
-    updated_dists = [parse(Float64, updated_dist) for updated_dist in split(readline(client_socket), ' ')]
+    updated_dists = [parse(Int64, updated_dist) for updated_dist in split(readline(client_socket), ' ')]
     @assert(length(updated_dists) == length(unevaluated_edges))
     for (updated_dist, (node_idx1, node_idx2)) in zip(updated_dists, unevaluated_edges)
       confirmed_dist[node_idx1, node_idx2] = true
-      dist[node_idx1, node_idx2] = updated_dist
+      if updated_dist < 0 # Infeasible edge
+        dist[node_idx1, node_idx2, 1] = 1
+        dist[node_idx1, node_idx2, 2] = 0
+      else
+        dist[node_idx1, node_idx2, 2] = updated_dist
+      end
     end
     tour.cost = tour_cost(tour.tour, dist)
 
@@ -202,10 +209,10 @@ end
 end
 
 """  Compute the length of a tour  """
-@inline function tour_cost(tour::Array{Int64,1}, dist::Array{Int64,2})
-    tour_length = dist[tour[end], tour[1]]
+@inline function tour_cost(tour::Array{Int64,1}, dist::Array{Int64,3})
+    tour_length = dist[tour[end], tour[1],:]
     @inbounds for i in 1:length(tour)-1
-    	tour_length += dist[tour[i], tour[i+1]]
+    	tour_length += dist[tour[i], tour[i+1],:]
     end
     return tour_length
 end
@@ -244,7 +251,7 @@ end
 
 
 """ rand_select for randomize over all minimizers """
-@inline function rand_select(a::Array{Int64, 1}, val::Int)
+@inline function rand_select(a::Array{Array{Int64, 1},1}, val::Array{Int64,1})
 	inds = Int[]
 	@inbounds for i=1:length(a)
 		a[i] == val && (push!(inds, i))
