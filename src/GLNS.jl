@@ -18,6 +18,8 @@ using Sockets
 using Printf
 using NPZ
 using CPUTime
+using ThreadPinning
+using Base.Threads
 include("utilities.jl")
 include("parse_print.jl")
 include("tour_optimizations.jl")
@@ -332,6 +334,64 @@ function main(args::Vector{String}, max_time::Float64, inf_val::Int64, given_ini
     println("Compile time: ", timing_result.compile_time)
   end
   return timing_result.value
+end
+
+function parallel_restrictions(args::Vector{String}, max_time::Float64, inf_val::Int64, given_initial_tours::AbstractArray{Int64,1}, do_perf::Bool, perf_file::String, dist::AbstractArray{Int64,2}, call_gc::Bool, num_nodes_restriction::Int64)
+  nthreads = Threads.nthreads()
+  pinthreads(:cores)
+
+  start_time_for_tour_history = time_ns()
+  problem_instance, optional_args = parse_cmd(args)
+  problem_instance = String(problem_instance)
+
+	output_file = get(optional_args, :output, "None")
+  if output_file != "None"
+    f = open(output_file, "w")
+    write(f, "\n")
+    close(f)
+  end
+
+  optional_args[Symbol("max_time")] = max_time
+
+  evaluated_edges = Vector{Tuple{Int64, Int64}}()
+  open_tsp = false
+
+  read_start_time = time_ns()
+  num_vertices, num_sets, sets, _, membership = read_file(problem_instance, size(dist, 1) == 0)
+  read_end_time = time_ns()
+  instance_read_time = (read_end_time - read_start_time)/1.0e9
+  # println("Reading GTSPLIB file took ", instance_read_time, " s")
+
+  cost_mat_read_time = 0.
+
+  if call_gc
+    GC.gc()
+  end
+
+  # Need to make the copies here because thread 1 is going to start shuffling the sets once we enter the following for loop
+  set_copies_per_thread = [deepcopy(sets) for thread_idx=2:nthreads]
+
+  Random.seed!(1234)
+  @threads for thread_idx=1:nthreads
+    if thread_idx == 1
+      GLNS.solver(problem_instance, TCPSocket(), given_initial_tours, start_time_for_tour_history, inf_val, evaluated_edges, open_tsp, num_vertices, num_sets, sets, dist, membership, instance_read_time, cost_mat_read_time, do_perf, perf_file; optional_args...)
+    else
+      this_optional_args = deepcopy(optional_args)
+      this_optional_args[:output] = optional_args[:output][1:length(optional_args[:output]) - length(".tour")]*"_"*string(thread_idx)*".tour"
+      this_sets = set_copies_per_thread[thread_idx - 1]
+      this_membership = copy(membership)
+      for set_idx=1:length(this_sets)
+        num_to_remove = length(sets[set_idx]) - num_nodes_restriction
+        for removal_num=1:num_to_remove
+          # Assume the node in the given initial tour is the first element in the set
+          removal_idx = rand(2:length(this_sets[set_idx]))
+          this_membership[this_sets[set_idx][removal_idx]] = -1
+          splice!(this_sets[set_idx], removal_idx)
+        end
+      end
+      GLNS.solver(problem_instance, TCPSocket(), given_initial_tours, start_time_for_tour_history, inf_val, evaluated_edges, open_tsp, num_vertices, num_sets, this_sets, dist, this_membership, instance_read_time, cost_mat_read_time, do_perf, perf_file; this_optional_args...)
+    end
+  end
 end
 
 end

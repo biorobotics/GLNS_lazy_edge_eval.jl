@@ -12,15 +12,31 @@ version = "1.11.0"
 uuid = "2a0f44e3-6c83-55bd-87e4-b1978d98bd5f"
 version = "1.11.0"
 
+[[CEnum]]
+git-tree-sha1 = "389ad5c84de1ae7cf0e28e381131c98ea87d54fc"
+uuid = "fa961155-64e5-5f13-b03f-caf6b980ea82"
+version = "0.5.0"
+
 [[CPUTime]]
 git-tree-sha1 = "2dcc50ea6a0a1ef6440d6eecd0fe3813e5671f45"
 uuid = "a9c8d775-2e2e-55fc-8582-045d282d599e"
 version = "1.0.0"
 
+[[CompilerSupportLibraries_jll]]
+deps = ["Artifacts", "Libdl"]
+uuid = "e66e0078-7015-5450-92f7-15fbd957f2ae"
+version = "1.1.1+0"
+
 [[Dates]]
 deps = ["Printf"]
 uuid = "ade2ca70-3891-5945-98fb-dc099432e06a"
 version = "1.11.0"
+
+[[DelimitedFiles]]
+deps = ["Mmap"]
+git-tree-sha1 = "9e2f36d3c96a820c678f2f1f1782582fcf685bae"
+uuid = "8bb1440f-4735-579b-a4ab-409b98df4dab"
+version = "1.9.1"
 
 [[Downloads]]
 deps = ["ArgTools", "FileWatching", "LibCURL", "NetworkOptions"]
@@ -43,10 +59,34 @@ version = "1.16.6"
 uuid = "7b1f6079-737a-58dc-b8bc-7a2ca5c1b5ee"
 version = "1.11.0"
 
+[[Hwloc]]
+deps = ["CEnum", "Hwloc_jll", "Printf"]
+git-tree-sha1 = "6a3d80f31ff87bc94ab22a7b8ec2f263f9a6a583"
+uuid = "0e44f5e4-bd66-52a0-8798-143a42290a1d"
+version = "3.3.0"
+
+    [Hwloc.extensions]
+    HwlocTrees = "AbstractTrees"
+
+    [Hwloc.weakdeps]
+    AbstractTrees = "1520ce14-60c1-5f80-bbc7-55ef81b5835c"
+
+[[Hwloc_jll]]
+deps = ["Artifacts", "JLLWrappers", "Libdl"]
+git-tree-sha1 = "f93a9ce66cd89c9ba7a4695a47fd93b4c6bc59fa"
+uuid = "e33a78d0-f292-5ffc-b300-72abe9b543c8"
+version = "2.12.0+0"
+
 [[InteractiveUtils]]
 deps = ["Markdown"]
 uuid = "b77e0a4c-d291-57a0-90e8-8db25a27a240"
 version = "1.11.0"
+
+[[JLLWrappers]]
+deps = ["Artifacts", "Preferences"]
+git-tree-sha1 = "a007feb38b422fbdab534406aeca1b86823cb4d6"
+uuid = "692b3bcd-3c85-4b1f-b108-f13ce0eb3210"
+version = "1.7.0"
 
 [[LibCURL]]
 deps = ["LibCURL_jll", "MozillaCACerts_jll"]
@@ -77,6 +117,11 @@ version = "1.11.0+1"
 uuid = "8f399da3-3557-5675-b5ff-fb832c97cbdb"
 version = "1.11.0"
 
+[[LinearAlgebra]]
+deps = ["Libdl", "OpenBLAS_jll", "libblastrampoline_jll"]
+uuid = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
+version = "1.11.0"
+
 [[Logging]]
 uuid = "56ddb016-857b-54e1-b83d-db4d58db5568"
 version = "1.11.0"
@@ -90,6 +135,10 @@ version = "1.11.0"
 deps = ["Artifacts", "Libdl"]
 uuid = "c8ffd9c3-330d-5841-b78e-0817d7145fa1"
 version = "2.28.6+0"
+
+[[Mmap]]
+uuid = "a63ad114-7e13-5084-954f-fe012c677804"
+version = "1.11.0"
 
 [[MozillaCACerts_jll]]
 uuid = "14a3606d-f60d-562e-9121-12d972cd8159"
@@ -105,6 +154,11 @@ version = "0.4.3"
 uuid = "ca575930-c2e3-43a9-ace4-1e988b2c1908"
 version = "1.2.0"
 
+[[OpenBLAS_jll]]
+deps = ["Artifacts", "CompilerSupportLibraries_jll", "Libdl"]
+uuid = "4536629a-c528-5b80-bd46-f80d51c5b363"
+version = "0.3.27+1"
+
 [[Pkg]]
 deps = ["Artifacts", "Dates", "Downloads", "FileWatching", "LibGit2", "Libdl", "Logging", "Markdown", "Printf", "Random", "SHA", "TOML", "Tar", "UUIDs", "p7zip_jll"]
 uuid = "44cfe95a-1eb2-52ea-b672-e2afdf69b78f"
@@ -115,6 +169,18 @@ version = "1.11.0"
 
     [Pkg.weakdeps]
     REPL = "3fa0cd96-eef1-5676-8a61-b3b8758bbffb"
+
+[[PrecompileTools]]
+deps = ["Preferences"]
+git-tree-sha1 = "5aa36f7049a63a1528fe8f7c3f2113413ffd4e1f"
+uuid = "aea7be01-6a6a-4083-8856-8a6e6704d82a"
+version = "1.2.1"
+
+[[Preferences]]
+deps = ["TOML"]
+git-tree-sha1 = "9306f6085165d270f7e3db02af26a400d580f5c6"
+uuid = "21216c6a-2e73-6563-6e65-726566657250"
+version = "1.4.3"
 
 [[Printf]]
 deps = ["Unicode"]
@@ -144,6 +210,17 @@ version = "1.11.0"
 uuid = "6462fe0b-24de-5631-8697-dd941f90decc"
 version = "1.11.0"
 
+[[StableTasks]]
+git-tree-sha1 = "c4f6610f85cb965bee5bfafa64cbeeda55a4e0b2"
+uuid = "91464d47-22a1-43fe-8b7f-2d57ee82463f"
+version = "0.1.7"
+
+[[SysInfo]]
+deps = ["Dates", "DelimitedFiles", "Hwloc", "PrecompileTools", "Random", "Serialization"]
+git-tree-sha1 = "7aaebfbf5b3a39268f4a0caaa43e878e1138d25c"
+uuid = "90a7ee08-a23f-48b9-9006-0e0e2a9e4608"
+version = "0.3.0"
+
 [[TOML]]
 deps = ["Dates"]
 uuid = "fa267f1f-6049-4f14-aa54-33bafae1ed76"
@@ -158,6 +235,26 @@ version = "1.10.0"
 deps = ["InteractiveUtils", "Logging", "Random", "Serialization"]
 uuid = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 version = "1.11.0"
+
+[[ThreadPinning]]
+deps = ["DelimitedFiles", "Libdl", "LinearAlgebra", "PrecompileTools", "Preferences", "Random", "StableTasks", "SysInfo", "ThreadPinningCore"]
+git-tree-sha1 = "d47dbc7862f69ce1973fff227237275ff4a10781"
+uuid = "811555cd-349b-4f26-b7bc-1f208b848042"
+version = "1.0.2"
+
+    [ThreadPinning.extensions]
+    DistributedExt = "Distributed"
+    MPIExt = "MPI"
+
+    [ThreadPinning.weakdeps]
+    Distributed = "8ba89e20-285c-5b6f-9357-94700520ee1b"
+    MPI = "da04e1cc-30fd-572f-bb4f-1f8673147195"
+
+[[ThreadPinningCore]]
+deps = ["LinearAlgebra", "PrecompileTools", "StableTasks"]
+git-tree-sha1 = "bb3c6f3b5600fbff028c43348365681b34d06499"
+uuid = "6f48bc29-05ce-4cc8-baad-4adcba581a18"
+version = "0.4.5"
 
 [[UUIDs]]
 deps = ["Random", "SHA"]
@@ -178,6 +275,11 @@ version = "0.10.1"
 deps = ["Libdl"]
 uuid = "83775a58-1f1d-513f-b197-d71354ab007a"
 version = "1.2.13+1"
+
+[[libblastrampoline_jll]]
+deps = ["Artifacts", "Libdl"]
+uuid = "8e850b90-86db-534c-a0d3-1478176c7d93"
+version = "5.11.0+0"
 
 [[nghttp2_jll]]
 deps = ["Artifacts", "Libdl"]

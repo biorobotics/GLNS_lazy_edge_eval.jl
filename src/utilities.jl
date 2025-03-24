@@ -85,7 +85,13 @@ function set_vertex_dist(dist::AbstractArray{Int64,2}, num_sets::Int, member::Ar
 	dist_vert_set = typemax(Int64) * ones(Int64, numv, num_sets)
 
 	for i = 1:numv
-        for j = 1:numv
+    if member[i] == -1
+      continue
+    end
+    for j = 1:numv
+      if member[j] == -1
+        continue
+      end
 			set = member[j]
 			if dist[j,i] < dist_set_vert[set, i]
 				dist_set_vert[set, i] = dist[j,i]
