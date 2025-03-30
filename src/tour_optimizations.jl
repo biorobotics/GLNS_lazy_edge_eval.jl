@@ -12,6 +12,25 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+using DataStructures
+
+mutable struct AStarNode
+  seq_idx::Int64
+  node_idx::Int64
+  g::Int64
+  h::Int64
+  f::Int64
+  back::Int64
+end
+
+function AStarNode(seq_idx, node_idx, g, h, back)
+  return AStarNode(seq_idx, node_idx, g, h, g + h, back)
+end
+
+function AStarNode(seq_idx, node_idx, g, back)
+  return AStarNode(seq_idx, node_idx, g, 0, g, back)
+end
+
 
 """
 Sequentially moves each vertex to its best point on the tour.
@@ -85,6 +104,89 @@ compute the cost of inserting vertex v into position i of tour
 		end
     end
     return bestv, bestpos, best_cost
+end
+
+@inline function insert_cost_lb_constrained(tour::Array{Int64,1}, dist, set::Array{Int64, 1}, setind::Int, 
+						   setdist::Distsv, bestv::Int, bestpos::Int, best_cost::Int, inf_val::Int64, member::Vector{Int64}, sets, best_repaired_node_seq::Vector{Int64})
+    @inbounds for i = 1:length(tour)
+		v1 = prev_tour(tour, i) # first check lower bound
+		lb = setdist.vert_set[v1, setind] + setdist.set_vert[setind, tour[i]] - dist[v1, tour[i]]
+		lb > best_cost && setdist.set_vert[setind, tour[i]] != inf_val && continue
+		for v in set
+        insert_cost = typemax(Int64)
+        repaired_node_seq = Vector{Int64}()
+        if dist[v1, v] != inf_val && dist[v, tour[i]] == inf_val
+          seen_nodes = Dict{Int64,AStarNode}()
+          seen_nodes[v] = AStarNode(i - 1, v, 0, -1)
+          open_list = PriorityQueue{AStarNode, Int64}()
+          enqueue!(open_list, seen_nodes[v], 0)
+          closed_list = Set{Int64}()
+          goal_f = typemax(Int64)
+          goal_node_idx = -1
+          while length(open_list) != 0
+            if goal_f <= peek(open_list)[1].f
+              break
+            end
+            pop = dequeue!(open_list)
+            if pop.node_idx in closed_list
+              # Outdated copy of node. Must have worse or equal g-value to the one in seen_nodes,
+              # because of consistent heuristic (always equals 0)
+              @assert(pop.g >= seen_nodes[pop.node_idx].g)
+              continue
+            end
+            push!(closed_list, pop.node_idx)
+            next_seq_idx = pop.seq_idx%length(tour) + 1
+            next_set_idx = member[tour[next_seq_idx]]
+            next_set = sets[next_set_idx]
+            if next_set_idx == member[v1]
+              next_set = [v1]
+            end
+            for next_node_idx in next_set
+              if dist[pop.node_idx, next_node_idx] != inf_val &&
+                 !(next_node_idx in closed_list) &&
+                 (!haskey(seen_nodes, next_node_idx) || pop.g + dist[pop.node_idx, next_node_idx] < seen_nodes[next_node_idx].g)
+                seen_nodes[next_node_idx] = AStarNode(next_seq_idx, next_node_idx, pop.g + dist[pop.node_idx, next_node_idx], pop.node_idx)
+                enqueue!(open_list, seen_nodes[next_node_idx], seen_nodes[next_node_idx].f)
+                if next_node_idx == tour[next_seq_idx] && seen_nodes[next_node_idx].f < goal_f
+                  goal_f = seen_nodes[next_node_idx].f
+                  goal_node_idx = next_node_idx
+                end
+              end
+            end
+          end
+
+          if goal_f != typemax(Int64)
+            repaired_node_seq = [goal_node_idx]
+            node = seen_nodes[goal_node_idx]
+            while node.back != -1
+              node = seen_nodes[node.back]
+              push!(repaired_node_seq, node.node_idx)
+            end
+            reverse!(repaired_node_seq)
+            @assert(repaired_node_seq[1] == v)
+            insert_cost = dist[v1, v]
+            zero_based_i = (i - 1)%length(tour)
+            for zero_based_repaired_seq_idx=0:length(repaired_node_seq) - 2
+              zero_based_tour_idx = (zero_based_i - 1 + zero_based_repaired_seq_idx)%length(tour)
+              zero_based_next_tour_idx = (zero_based_tour_idx + 1)%length(tour)
+              repaired_seq_idx = zero_based_repaired_seq_idx + 1
+              insert_cost += dist[repaired_node_seq[repaired_seq_idx], repaired_node_seq[repaired_seq_idx + 1]] - dist[zero_based_tour_idx + 1, zero_based_next_tour_idx + 1]
+            end
+          else
+            continue
+          end
+        else
+          insert_cost = dist[v1, v] + dist[v, tour[i]] - dist[v1, tour[i]]
+        end
+        if insert_cost < best_cost
+          best_cost = insert_cost
+          bestv = v
+          bestpos = i
+          best_repaired_node_seq = repaired_node_seq
+        end
+		end
+    end
+    return bestv, bestpos, best_cost, best_repaired_node_seq
 end
 
 

@@ -18,7 +18,7 @@ removal followed by insertion on tour.  Operation done in place.
 """
 function remove_insert(current::Tour, best::Tour, dist::AbstractArray{Int64,2}, member::Array{Int64,1},
 						setdist::Distsv, sets::Vector{Vector{Int64}},
-						powers, param::Dict{Symbol,Any}, phase::Symbol)
+						powers, param::Dict{Symbol,Any}, phase::Symbol, inf_val)
 	# make a new tour to perform the insertion and deletion on
     trial = Tour(copy(current.tour), current.cost)
 	pivot_tour!(trial.tour)
@@ -40,7 +40,8 @@ function remove_insert(current::Tour, best::Tour, dist::AbstractArray{Int64,2}, 
 	insertion = power_select(powers["insertions"], powers["insertion_total"], phase)
 	noise = power_select(powers["noise"], powers["noise_total"], phase)
 	if insertion.name == "cheapest"
-		cheapest_insertion!(trial.tour, sets_to_insert, dist, setdist, sets)
+		# cheapest_insertion!(trial.tour, sets_to_insert, dist, setdist, sets)
+		cheapest_insertion_constrained!(trial.tour, sets_to_insert, dist, setdist, sets, inf_val, member)
 	else
 		randpdf_insertion!(trial.tour, sets_to_insert, dist, setdist, sets,
 							insertion.value, noise)
@@ -174,6 +175,46 @@ function cheapest_insertion!(tour::Array{Int64,1}, sets_to_insert::Array{Int64,1
 
         # now, perform the insertion
         insert!(tour, best_pos, best_v)
+        # remove the inserted set from data structures
+        splice!(sets_to_insert, best_set)
+    end
+end
+
+function cheapest_insertion_constrained!(tour::Array{Int64,1}, sets_to_insert::Array{Int64,1},
+	dist, setdist::Distsv, sets::Vector{Vector{Int64}}, inf_val::Int64, member)
+    """
+	choose vertex that can be inserted most cheaply, and insert it in that position
+	"""
+	while length(sets_to_insert) > 0
+        best_cost = typemax(Int64)
+        best_v = 0
+        best_pos = 0
+        best_set = 0
+        best_repaired_node_seq = Vector{Int64}()
+        for i = 1:length(sets_to_insert)
+            set_ind = sets_to_insert[i]
+            # find the best place to insert the vertex
+            best_v, best_pos, cost, best_repaired_node_seq = insert_cost_lb_constrained(tour, dist, sets[set_ind], set_ind, setdist,
+										  best_v, best_pos, best_cost, inf_val, member, sets, best_repaired_node_seq)
+            if cost < best_cost
+              best_set = i
+              best_cost = cost
+            end
+        end
+
+        # now, perform the insertion
+        insert!(tour, best_pos, best_v)
+        if length(best_repaired_node_seq) != 0
+          i = best_pos
+          zero_based_i = (i - 1)%length(tour)
+          for zero_based_repaired_seq_idx=1:length(best_repaired_node_seq) - 1
+            zero_based_tour_idx = (zero_based_i + zero_based_repaired_seq_idx)%length(tour)
+            tour_idx = zero_based_tour_idx + 1
+            repaired_seq_idx = zero_based_repaired_seq_idx + 1
+            @assert(member[tour[tour_idx]] == member[best_repaired_node_seq[repaired_seq_idx]])
+            tour[tour_idx] = best_repaired_node_seq[repaired_seq_idx]
+          end
+        end
         # remove the inserted set from data structures
         splice!(sets_to_insert, best_set)
     end

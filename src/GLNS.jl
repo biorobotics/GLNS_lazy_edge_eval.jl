@@ -139,7 +139,7 @@ function solver(problem_instance::String, client_socket::TCPSocket, given_initia
 				if iter_count > param[:num_iterations]/2 && phase == :early
 					phase = :mid  # move to mid phase after half iterations
 				end
-				trial = remove_insert(current, best, dist, membership, setdist, sets, powers, param, phase)
+				trial = remove_insert(current, best, dist, membership, setdist, sets, powers, param, phase, inf_val)
 
 				if trial.cost < best.cost
           if param[:lazy_edge_eval] == 1
