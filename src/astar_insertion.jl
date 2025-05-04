@@ -55,9 +55,12 @@ function astar_insertion!(dist::AbstractArray{Int64, 2}, sets::Vector{Vector{Int
 
   # Update ancestors per set
   vd_info.ancestors_per_set[:] .= false
+  visited_nodes_per_set_in_partial_tour = -ones(Int64, length(sets))
+  visited_nodes_per_set_in_partial_tour[membership[partial_tour[1]]] = partial_tour[1]
   for tour_idx1 in 2:length(partial_tour)
     node_idx1 = partial_tour[tour_idx1]
     set_idx1 = membership[node_idx1]
+    visited_nodes_per_set_in_partial_tour[set_idx1] = node_idx1
     for tour_idx2 in 1:tour_idx1-1
       node_idx2 = partial_tour[tour_idx2]
       set_idx2 = membership[node_idx2]
@@ -109,7 +112,9 @@ function astar_insertion!(dist::AbstractArray{Int64, 2}, sets::Vector{Vector{Int
       if mandatory_ancestor_unvisited
         continue
       end
-      for node_idx in sets[set_idx]
+
+      this_set = visited_nodes_per_set_in_partial_tour[set_idx] == -1 ? sets[set_idx] : [visited_nodes_per_set_in_partial_tour[set_idx]]
+      for node_idx in this_set
         if dist[pop.final_node_idx, node_idx] == inf_val
           continue
         end
