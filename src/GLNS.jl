@@ -20,6 +20,7 @@ using NPZ
 using CPUTime
 using ThreadPinning
 using Base.Threads
+include("astar_insertion.jl")
 include("utilities.jl")
 include("parse_print.jl")
 include("tour_optimizations.jl")
@@ -105,6 +106,13 @@ function solver(problem_instance::String, client_socket::TCPSocket, given_initia
 
   stop_upon_budget = param[:budget] != typemin(Int64)
 
+  do_astar_insertion = true
+  if do_astar_insertion
+    vd_info = VDInfo(dist, sets, membership, inf_val)
+  else
+    vd_info = VDInfo(zeros(Bool, 1, 1), zeros(Bool, 1, 1))
+  end
+
 	while true
     if count[:cold_trial] > param[:cold_trials] && !stop_upon_budget
       break
@@ -144,7 +152,11 @@ function solver(problem_instance::String, client_socket::TCPSocket, given_initia
 				if iter_count > param[:num_iterations]/2 && phase == :early
 					phase = :mid  # move to mid phase after half iterations
 				end
-				trial = remove_insert(current, best, dist, membership, setdist, sets, powers, param, phase)
+        if do_astar_insertion
+          trial = remove_insert_astar(current, best, dist, membership, setdist, sets, powers, param, phase, inf_val, init_time + param[:max_time], vd_info)
+        else
+          trial = remove_insert(current, best, dist, membership, setdist, sets, powers, param, phase)
+        end
 
 				if trial.cost < best.cost
           if param[:lazy_edge_eval] == 1
@@ -180,7 +192,7 @@ function solver(problem_instance::String, client_socket::TCPSocket, given_initia
 					best = current
           prev_best_cost = best.cost
           prev_best_tour = best.tour
-					opt_cycle!(best, dist, sets, membership, param, setdist, "full")
+          opt_cycle!(best, dist, sets, membership, param, setdist, "full")
           if param[:lazy_edge_eval] == 1
             eval_edges!(best, dist, confirmed_dist, client_socket, setdist, num_sets, membership)
             if best.cost > prev_best_cost

@@ -65,6 +65,92 @@ function remove_insert(current::Tour, best::Tour, dist::AbstractArray{Int64,2}, 
 	return trial
 end
 
+function remove_insert_astar(current::Tour, best::Tour, dist::AbstractArray{Int64,2}, member::Array{Int64,1},
+						setdist::Distsv, sets::Vector{Vector{Int64}},
+						powers, param::Dict{Symbol,Any}, phase::Symbol, inf_val::Int64, stop_time::Float64, vd_info::VDInfo)
+	# make a new tour to perform the insertion and deletion on
+  trial = Tour(copy(current.tour), current.cost)
+	num_removals = rand(param[:min_removals]:param[:max_removals])
+
+	removal = power_select(powers["removals"], powers["removal_total"], phase)
+	if removal.name == "distance"
+		sets_to_insert = distance_removal!(trial.tour, dist, num_removals,
+													member, removal.value)
+    elseif removal.name == "worst"
+		sets_to_insert = worst_removal!(trial.tour, dist, num_removals,
+													member, removal.value)
+	else
+		sets_to_insert = segment_removal!(trial.tour, num_removals, member)
+	end
+
+  if 1 in trial.tour
+    idx1 = findfirst(==(1), trial.tour)
+    trial.tour = [trial.tour[idx1:end]; trial.tour[1:idx1-1]]
+  else
+    added1 = false   
+    for idx1=1:length(trial.tour)-1
+      if dist[trial.tour[idx1], trial.tour[idx1 + 1]] == inf_val
+        trial.tour = [trial.tour[idx1:end]; trial.tour[1:idx1-1]]
+        added1 = true   
+        break
+      end
+    end
+    if !added1
+      trial.tour = [1; trial.tour[1:end]]
+    end
+
+    idx1 = findfirst(==(1), sets_to_insert)
+    # splice!(sets_to_insert, idx1) # TODO: don't need to do this unless we're comparing against GLNS insertion heuristics
+  end
+
+	trial.tour = astar_insertion!(dist, sets, member, inf_val, stop_time, vd_info, trial.tour)
+  trial.cost = tour_cost(trial.tour, dist)
+
+  # TODO: take out unless we want to compare against GLNS insertion heuristics.
+  # If uncommenting the below, comment out the above two lines
+  #=
+	insertion = power_select(powers["insertions"], powers["insertion_total"], phase)
+	noise = power_select(powers["noise"], powers["noise_total"], phase)
+  tmp = Tour(copy(trial.tour), trial.cost)
+	if insertion.name == "cheapest"
+		cheapest_insertion!(tmp.tour, sets_to_insert, dist, setdist, sets)
+	else
+		randpdf_insertion!(tmp.tour, sets_to_insert, dist, setdist, sets,
+							insertion.value, noise)
+	end
+
+  # opt_cycle could make tmp better than trial
+  if false # rand() < param[:prob_reopt]
+    opt_cycle!(tmp, dist, sets, member, param, setdist, "partial")
+  else
+    tmp.cost = tour_cost(tmp.tour, dist)
+  end
+
+  tmp2 = Tour(copy(trial.tour), trial.cost)
+
+  idx1 = findfirst(==(1), current.tour)
+  current.tour = [current.tour[idx1:end]; current.tour[1:idx1-1]]
+	trial.tour = astar_insertion!(dist, sets, member, inf_val, stop_time, vd_info, trial.tour, current.tour)
+  trial.cost = tour_cost(trial.tour, dist)
+
+  @assert(trial.cost <= tmp.cost)
+  # If above assertion fails, use the below to debug
+  if trial.cost > tmp.cost
+    idx1 = findfirst(==(1), tmp.tour)
+    tmp.tour = [tmp.tour[idx1:end]; tmp.tour[1:idx1-1]]
+    trial.tour = astar_insertion!(dist, sets, member, inf_val, stop_time, vd_info, tmp2.tour, tmp.tour)
+    trial.cost = tour_cost(trial.tour, dist)
+  end
+  @assert(trial.cost <= tmp.cost)
+  =#
+
+	# update power scores for remove and insert
+	score = 100 * max(current.cost - trial.cost, 0)/current.cost
+	removal.scores[phase] += score
+	removal.count[phase] += 1
+	return trial
+end
+
 
 """
 Select an integer between 1 and num according to

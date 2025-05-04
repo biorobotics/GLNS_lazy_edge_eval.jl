@@ -1,0 +1,177 @@
+using DataStructures
+
+# VD is visitation DAG
+struct VDNode
+  parent::Vector{VDNode}
+  visited_sets::Vector{Bool}
+  final_node_idx::Int64
+  key::Tuple{Vector{Bool}, Int64}
+  g_val::Int64
+  h_val::Int64
+  f_val::Int64
+end
+
+function VDNode(parent::Vector{VDNode}, visited_sets::Vector{Bool}, final_node_idx::Int64, g_val::Int64, h_val::Int64)
+  return VDNode(parent, visited_sets, final_node_idx, (visited_sets, final_node_idx), g_val, h_val, g_val + h_val)
+end
+
+struct VDInfo
+  before::Array{Bool, 2}
+  ancestors_per_set::Array{Bool,2}
+end
+
+function VDInfo(dist::AbstractArray{Int64, 2}, sets::Vector{Vector{Int64}}, membership::Vector{Int64}, inf_val::Int64)
+  vd_info = VDInfo(ones(Bool, length(membership), length(sets)), zeros(Bool, length(sets), length(sets)))
+
+  for set_idx=1:length(sets)
+    for node_idx=1:length(membership)
+      for node_idx2 in sets[set_idx]
+        if dist[node_idx, node_idx2] != inf_val
+          vd_info.before[node_idx, set_idx] = false
+          break
+        end
+      end
+    end
+  end
+
+  for node_idx = 2:length(membership)
+    vd_info.before[node_idx, membership[node_idx]] = false
+  end
+
+  return vd_info
+end
+
+# function astar_insertion!(dist::AbstractArray{Int64, 2}, sets::Vector{Vector{Int64}}, membership::Vector{Int64}, inf_val::Int64, stop_time::Float64, vd_info::VDInfo, partial_tour::Vector{Int64}, known_feas_tour::Vector{Int64})
+function astar_insertion!(dist::AbstractArray{Int64, 2}, sets::Vector{Vector{Int64}}, membership::Vector{Int64}, inf_val::Int64, stop_time::Float64, vd_info::VDInfo, partial_tour::Vector{Int64})
+  closed_list = Set{Tuple{Vector{Bool}, Int64}}()
+
+  open_list = PriorityQueue{VDNode, Int64}()
+  root_node = VDNode(Vector{VDNode}(), zeros(Bool, length(sets)), 1, 0, 0)
+  root_node.visited_sets[membership[1]] = true
+  enqueue!(open_list, root_node, 0)
+
+  seen_nodes = Dict{Tuple{Vector{Bool}, Int64}, VDNode}()
+  seen_nodes[root_node.key] = root_node
+
+  # Update ancestors per set
+  vd_info.ancestors_per_set[:] .= false
+  for tour_idx1 in 2:length(partial_tour)
+    node_idx1 = partial_tour[tour_idx1]
+    set_idx1 = membership[node_idx1]
+    for tour_idx2 in 1:tour_idx1-1
+      node_idx2 = partial_tour[tour_idx2]
+      set_idx2 = membership[node_idx2]
+      vd_info.ancestors_per_set[set_idx1, set_idx2] = true
+    end
+    for tour_idx2 in tour_idx1 + 1:length(partial_tour)
+      node_idx2 = partial_tour[tour_idx2]
+      set_idx2 = membership[node_idx2]
+      vd_info.ancestors_per_set[set_idx1, set_idx2] = false
+    end
+  end
+
+  #=
+  known_key = (zeros(Bool, length(sets)), 0)
+  known_keys = Vector{Tuple{Vector{Bool}, Int64}}()
+  for node_idx in known_feas_tour
+    known_key = (copy(known_key[1]), node_idx)
+    known_key[1][membership[node_idx]] = true
+    push!(known_keys, known_key)
+  end
+  =#
+
+  goal_node = VDNode(Vector{VDNode}(), zeros(Bool, 1), 1, typemax(Int64), 0)
+  while length(open_list) != 0 && goal_node.f_val > peek(open_list).first.f_val
+    if time() > stop_time
+      println("Timeout during A*")
+      return Vector{Int64}()
+    end
+
+    pop = dequeue!(open_list)
+    if pop.key in closed_list
+      continue
+    end
+
+    push!(closed_list, pop.key)
+
+    neighbors = Vector{Int64}()
+    for set_idx=1:length(sets)
+      if pop.visited_sets[set_idx]
+        continue
+      end
+      mandatory_ancestor_unvisited = false
+      for set_idx2=1:length(sets)
+        if vd_info.ancestors_per_set[set_idx, set_idx2] && !pop.visited_sets[set_idx2]
+          mandatory_ancestor_unvisited = true
+          break
+        end
+      end
+      if mandatory_ancestor_unvisited
+        continue
+      end
+      for node_idx in sets[set_idx]
+        if dist[pop.final_node_idx, node_idx] == inf_val
+          continue
+        end
+
+        prune = false
+        for set_idx2=1:length(sets)
+          if set_idx2 != membership[node_idx] && vd_info.before[node_idx, set_idx2] && !pop.visited_sets[set_idx2]
+            prune = true
+            break
+          end
+        end
+        if prune
+          continue
+        end
+
+        push!(neighbors, node_idx)
+      end
+    end
+
+    #=
+    idx = findfirst(==(pop.key), known_keys)
+    if idx != nothing && idx != length(known_keys)
+      @assert(known_keys[idx + 1][2] in neighbors)
+    end
+    =#
+
+    for node_idx in neighbors
+      neighbor_node = VDNode([pop], copy(pop.visited_sets), node_idx, pop.g_val + dist[pop.final_node_idx, node_idx], 0)
+      neighbor_node.visited_sets[membership[node_idx]] = true
+      if neighbor_node.key in closed_list
+        continue
+      end
+
+      if haskey(seen_nodes,  neighbor_node.key) && seen_nodes[neighbor_node.key].g_val <= neighbor_node.g_val
+        continue
+      end
+
+      seen_nodes[neighbor_node.key] = neighbor_node
+
+      enqueue!(open_list, neighbor_node, neighbor_node.f_val)
+
+      if neighbor_node.f_val < goal_node.f_val && all(neighbor_node.visited_sets)
+        goal_node = neighbor_node
+      end
+    end
+  end
+
+  # No solution
+  if length(open_list) == 0
+    println("No solution found by A*")
+    @assert(goal_node.f_val == typemax(Int64))
+    return Vector{Int64}()
+  end
+
+  tour = [goal_node.final_node_idx]
+  node_tmp = goal_node.parent
+  while length(node_tmp) != 0
+    node = node_tmp[1]
+    push!(tour, node.final_node_idx)
+    node_tmp = node.parent
+  end
+  reverse!(tour)
+
+  return tour
+end
