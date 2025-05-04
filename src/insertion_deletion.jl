@@ -68,6 +68,9 @@ end
 function remove_insert_astar(current::Tour, best::Tour, dist::AbstractArray{Int64,2}, member::Array{Int64,1},
 						setdist::Distsv, sets::Vector{Vector{Int64}},
 						powers, param::Dict{Symbol,Any}, phase::Symbol, inf_val::Int64, stop_time::Float64, vd_info::VDInfo)
+  if current.cost >= inf_val
+    throw("Trying to repair infeasible tour using A*")
+  end
 	# make a new tour to perform the insertion and deletion on
   trial = Tour(copy(current.tour), current.cost)
 	num_removals = rand(param[:min_removals]:param[:max_removals])
