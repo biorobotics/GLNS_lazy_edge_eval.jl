@@ -107,7 +107,12 @@ function remove_insert_astar(current::Tour, best::Tour, dist::AbstractArray{Int6
   end
 
 	trial.tour = astar_insertion!(dist, sets, member, inf_val, stop_time, vd_info, trial.tour)
-  trial.cost = tour_cost(trial.tour, dist)
+  if length(trial.tour) == 0
+    # Means we timed out
+    trial = current
+  else
+    trial.cost = tour_cost(trial.tour, dist)
+  end
 
   # TODO: take out unless we want to compare against GLNS insertion heuristics.
   # If uncommenting the below, comment out the above two lines
