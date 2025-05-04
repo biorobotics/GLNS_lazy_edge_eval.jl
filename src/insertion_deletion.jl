@@ -71,6 +71,11 @@ function remove_insert_astar(current::Tour, best::Tour, dist::AbstractArray{Int6
   if current.cost >= inf_val
     throw("Trying to repair infeasible tour using A*")
   end
+
+  # I'm doing this to avoid headaches of figuring out where node 1 used to be after removing it
+  idx1 = findfirst(==(1), current.tour)
+  current.tour = [current.tour[idx1:end]; current.tour[1:idx1-1]]
+
 	# make a new tour to perform the insertion and deletion on
   trial = Tour(copy(current.tour), current.cost)
 	num_removals = rand(param[:min_removals]:param[:max_removals])
@@ -86,32 +91,26 @@ function remove_insert_astar(current::Tour, best::Tour, dist::AbstractArray{Int6
 		sets_to_insert = segment_removal!(trial.tour, num_removals, member)
 	end
 
-  if 1 in trial.tour
-    idx1 = findfirst(==(1), trial.tour)
-    trial.tour = [trial.tour[idx1:end]; trial.tour[1:idx1-1]]
-  else
-    added1 = false   
-    for idx1=1:length(trial.tour)-1
-      if dist[trial.tour[idx1], trial.tour[idx1 + 1]] == inf_val
-        trial.tour = [trial.tour[idx1:end]; trial.tour[1:idx1-1]]
-        added1 = true   
-        break
-      end
-    end
-    if !added1
-      trial.tour = [1; trial.tour[1:end]]
-    end
-
-    idx1 = findfirst(==(1), sets_to_insert)
-    # splice!(sets_to_insert, idx1) # TODO: don't need to do this unless we're comparing against GLNS insertion heuristics
+  if trial.tour[1] != 1
+    trial.tour = [1; trial.tour]
+    # TODO: don't need to do this unless we're comparing against GLNS insertion heuristics
+    # idx1 = findfirst(==(1), sets_to_insert)
+    # splice!(sets_to_insert, idx1)
   end
 
+	# trial.tour = astar_insertion!(dist, sets, member, inf_val, stop_time, vd_info, trial.tour, current.tour)
 	trial.tour = astar_insertion!(dist, sets, member, inf_val, stop_time, vd_info, trial.tour)
   if length(trial.tour) == 0
     # Means we timed out
     trial = current
+    if time() <= stop_time
+      throw("A* insertion failed even though we started with a feasible tour and did not run out of time")
+    end
   else
     trial.cost = tour_cost(trial.tour, dist)
+    if trial.cost >= inf_val
+      throw("A* insertion gave infinite cost tour")
+    end
   end
 
   # TODO: take out unless we want to compare against GLNS insertion heuristics.
@@ -136,8 +135,6 @@ function remove_insert_astar(current::Tour, best::Tour, dist::AbstractArray{Int6
 
   tmp2 = Tour(copy(trial.tour), trial.cost)
 
-  idx1 = findfirst(==(1), current.tour)
-  current.tour = [current.tour[idx1:end]; current.tour[1:idx1-1]]
 	trial.tour = astar_insertion!(dist, sets, member, inf_val, stop_time, vd_info, trial.tour, current.tour)
   trial.cost = tour_cost(trial.tour, dist)
 

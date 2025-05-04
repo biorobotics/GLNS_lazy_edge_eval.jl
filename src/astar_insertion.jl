@@ -85,7 +85,7 @@ function astar_insertion!(dist::AbstractArray{Int64, 2}, sets::Vector{Vector{Int
 
   goal_node = VDNode(Vector{VDNode}(), zeros(Bool, 1), 1, typemax(Int64), 0)
   while length(open_list) != 0 && goal_node.f_val > peek(open_list).first.f_val
-    if time() > stop_time
+    if time() >= stop_time
       println("Timeout during A*")
       return Vector{Int64}()
     end
@@ -137,7 +137,38 @@ function astar_insertion!(dist::AbstractArray{Int64, 2}, sets::Vector{Vector{Int
     #=
     idx = findfirst(==(pop.key), known_keys)
     if idx != nothing && idx != length(known_keys)
-      @assert(known_keys[idx + 1][2] in neighbors)
+      if !(known_keys[idx + 1][2] in neighbors)
+        node_idx = known_keys[idx + 1][2]
+        set_idx = membership[node_idx]
+
+        mandatory_ancestor_unvisited = false
+        for set_idx2=1:length(sets)
+          if vd_info.ancestors_per_set[set_idx, set_idx2] && !pop.visited_sets[set_idx2]
+            mandatory_ancestor_unvisited = true
+            break
+          end
+        end
+        if mandatory_ancestor_unvisited
+          println("Mandatory ancestor unvisited")
+        end
+
+        this_set = visited_nodes_per_set_in_partial_tour[set_idx] == -1 ? sets[set_idx] : [visited_nodes_per_set_in_partial_tour[set_idx]]
+        for node_idx in this_set
+          if dist[pop.final_node_idx, node_idx] == inf_val
+            println("Inf dist")
+          end
+
+          prune = false
+          for set_idx2=1:length(sets)
+            if set_idx2 != membership[node_idx] && vd_info.before[node_idx, set_idx2] && !pop.visited_sets[set_idx2]
+              println("Prune")
+              prune = true
+              break
+            end
+          end
+        end
+        throw("Edge in known feas tour not generated during search")
+      end
     end
     =#
 
@@ -165,7 +196,9 @@ function astar_insertion!(dist::AbstractArray{Int64, 2}, sets::Vector{Vector{Int
   # No solution
   if length(open_list) == 0
     println("No solution found by A*")
-    @assert(goal_node.f_val == typemax(Int64))
+    if goal_node.f_val != typemax(Int64)
+      throw("f_value of goal node should be typemax(Int64)")
+    end
     return Vector{Int64}()
   end
 
