@@ -173,8 +173,7 @@ function astar_insertion!(sets_to_insert::Vector{Int64}, dist::AbstractArray{Int
 
         # Check if unvisited nonremoved node is unreachable from node_idx. If so, prune
         if next_nonremoved_idx <= length(partial_tour) && node_idx != partial_tour[next_nonremoved_idx]
-          # if dist[partial_tour[next_nonremoved_idx], node_idx] == inf_val # We could be checking this if we maintained triangle inequality during edge evaluation
-          if vd_info.before[node_idx, membership[partial_tour[next_nonremoved_idx]]]
+          if dist[node_idx, partial_tour[next_nonremoved_idx]] == inf_val
             continue
           end
         end
@@ -222,8 +221,7 @@ function astar_insertion!(sets_to_insert::Vector{Int64}, dist::AbstractArray{Int
         end
         =#
         if next_nonremoved_idx <= length(partial_tour) && node_idx != partial_tour[next_nonremoved_idx]
-          # if dist[partial_tour[next_nonremoved_idx], node_idx] == inf_val # We could be checking this if we maintained triangle inequality during edge eval
-          if vd_info.before[node_idx, membership[partial_tour[next_nonremoved_idx]]]
+          if dist[node_idx, partial_tour[next_nonremoved_idx]] == inf_val
             prune = true
             println("prune nonremoved")
             println(next_nonremoved_idx)
