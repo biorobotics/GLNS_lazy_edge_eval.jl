@@ -47,8 +47,9 @@ function main()
     @time GLNS.main(ARGS, 100., inf_val, given_initial_tours, false, "", dist, false)
     @time GLNS.main(PyList{Any}(ARGS), 100., inf_val, PyArray{Int64, 1, true, true, Int64}(given_initial_tours), false, "", PyArray{Int64, 2, true, true, Int64}(dist), false)
 
-    @time GLNS.main(ARGS, 100., inf_val, given_initial_tours, false, "", dist, true)
-    @time GLNS.main(PyList{Any}(ARGS), 100., inf_val, PyArray{Int64, 1, true, true, Int64}(given_initial_tours), false, "", PyArray{Int64, 2, true, true, Int64}(dist), true)
+    if i==1
+      @time GLNS.main(PyList{Any}(ARGS), 100., inf_val, PyArray{Int64, 1, true, true, Int64}(given_initial_tours), false, "", PyArray{Int64, 2, true, true, Int64}(dist), true)
+    end
   end
 end
 
