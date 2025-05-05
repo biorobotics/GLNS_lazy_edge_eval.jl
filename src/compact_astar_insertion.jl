@@ -148,6 +148,8 @@ function astar_insertion!(sets_to_insert::Vector{Int64}, dist::AbstractArray{Int
     neighbors = Vector{Int64}()
     neighbor_removed_sets = Vector{Int64}()
 
+    unvisited_removed_sets = findall(!, pop.visited_removed_sets)
+
     for (removed_set_idx, set_idx) in zip(this_removed_sets, this_sets)
       # bt = time_ns()
 
@@ -159,8 +161,9 @@ function astar_insertion!(sets_to_insert::Vector{Int64}, dist::AbstractArray{Int
 
         # Check if unvisited removed customer is in BEFORE[node_idx]. If so, prune
         prune = false
-        for (removed_set_idx2, set_idx2) in enumerate(sets_to_insert)
-          if vd_info.before[node_idx, set_idx2] && !pop.visited_removed_sets[removed_set_idx2]
+        for removed_set_idx2 in unvisited_removed_sets
+          set_idx2 = sets_to_insert[removed_set_idx2]
+          if vd_info.before[node_idx, set_idx2]
             prune = true
             break
           end
@@ -170,10 +173,8 @@ function astar_insertion!(sets_to_insert::Vector{Int64}, dist::AbstractArray{Int
         end
 
         # Check if unvisited nonremoved node is unreachable from node_idx. If so, prune
-        if next_nonremoved_idx <= length(partial_tour) && node_idx != partial_tour[next_nonremoved_idx]
-          if dist[node_idx, partial_tour[next_nonremoved_idx]] == inf_val
-            continue
-          end
+        if next_nonremoved_idx <= length(partial_tour) && node_idx != partial_tour[next_nonremoved_idx] && dist[node_idx, partial_tour[next_nonremoved_idx]] == inf_val
+          continue
         end
 
         push!(neighbors, node_idx)
