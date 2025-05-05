@@ -244,6 +244,11 @@ git-tree-sha1 = "c4f6610f85cb965bee5bfafa64cbeeda55a4e0b2"
 uuid = "91464d47-22a1-43fe-8b7f-2d57ee82463f"
 version = "0.1.7"
 
+[[StaticBitSets]]
+git-tree-sha1 = "8dd696134184782aa9327b0d9c4696229e60957a"
+uuid = "72d6c30d-a10b-4e7e-bc09-3079d9530bdf"
+version = "0.1.0"
+
 [[SysInfo]]
 deps = ["Dates", "DelimitedFiles", "Hwloc", "PrecompileTools", "Random", "Serialization"]
 git-tree-sha1 = "7aaebfbf5b3a39268f4a0caaa43e878e1138d25c"
