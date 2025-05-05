@@ -19,8 +19,6 @@ end
 
 struct VDInfo
   before::Array{Bool, 2}
-  ancestors_per_set::Array{Bool,2}
-  update_ancestors_time::Float64
   open_pop_time::Float64
   closed_check_time::Float64
   closed_push_time::Float64
@@ -35,7 +33,7 @@ struct VDInfo
 end
 
 function VDInfo(dist::AbstractArray{Int64, 2}, sets::Vector{Vector{Int64}}, membership::Vector{Int64}, inf_val::Int64)
-  vd_info = VDInfo(ones(Bool, length(membership), length(sets)), zeros(Bool, length(sets), length(sets)), zeros(12)...)
+  vd_info = VDInfo(ones(Bool, length(membership), length(sets)), zeros(11)...)
   if length(sets) == 0
     return vd_info
   end

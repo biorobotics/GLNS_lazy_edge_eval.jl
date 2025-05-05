@@ -315,7 +315,6 @@ function solver(problem_instance::String, client_socket::TCPSocket, given_initia
   print_summary(lowest, timer, proc_timer, membership, param, tour_history, cost_mat_read_time, instance_read_time, num_trials_feasible, num_trials, false)
 
   #=
-  println("vd_info.update_ancestors_time ", vd_info.update_ancestors_time)
   println("vd_info.open_pop_time ", vd_info.open_pop_time)
   println("vd_info.closed_check_time ", vd_info.closed_check_time)
   println("vd_info.closed_push_time ", vd_info.closed_push_time)
@@ -327,8 +326,7 @@ function solver(problem_instance::String, client_socket::TCPSocket, given_initia
   println("vd_info.seen_update_time ", vd_info.seen_update_time)
   println("vd_info.open_push_time ", vd_info.open_push_time)
   println("vd_info.goal_check_time ", vd_info.goal_check_time)
-  println("sum ", vd_info.update_ancestors_time + 
-                  vd_info.open_pop_time + 
+  println("sum ", vd_info.open_pop_time + 
                   vd_info.closed_check_time + 
                   vd_info.closed_push_time + 
                   vd_info.ancestor_check_time + 
