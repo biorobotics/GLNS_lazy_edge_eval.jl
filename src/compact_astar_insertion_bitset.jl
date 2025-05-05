@@ -18,7 +18,7 @@ function VDNode(tour_idx::Int64, parent::Vector{VDNode}, visited_removed_sets::S
   return VDNode(tour_idx, parent, visited_removed_sets, final_node_idx, (tour_idx, visited_removed_sets, final_node_idx), g_val, h_val, g_val + h_val)
 end
 
-mutable struct VDInfo
+struct VDInfo
   before::Vector{SBitSet{4, UInt32}} # Need to increase the number if we want more targets
   before_time::Float64
   open_pop_time::Float64
