@@ -59,6 +59,14 @@ deps = ["ArgTools", "FileWatching", "LibCURL", "NetworkOptions"]
 uuid = "f43a241f-c20a-4ad4-852c-f6b1247861c6"
 version = "1.6.0"
 
+[[FastPriorityQueues]]
+deps = ["DataStructures"]
+git-tree-sha1 = "447d67e5ef5be4602fefb0d160d1c97b369e6005"
+repo-rev = "main"
+repo-url = "../FastPriorityQueues.jl"
+uuid = "d4e633c3-44a9-41d8-acf9-6b39ae83a07a"
+version = "0.1.0"
+
 [[FileIO]]
 deps = ["Pkg", "Requires", "UUIDs"]
 git-tree-sha1 = "2dd20384bf8c6d411b5c7370865b1e9b26cb2ea3"

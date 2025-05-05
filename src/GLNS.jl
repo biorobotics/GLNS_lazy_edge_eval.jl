@@ -20,7 +20,8 @@ using NPZ
 using CPUTime
 using ThreadPinning
 using Base.Threads
-include("astar_insertion.jl")
+# include("astar_insertion.jl")
+include("compact_astar_insertion.jl")
 include("utilities.jl")
 include("parse_print.jl")
 include("tour_optimizations.jl")
@@ -110,7 +111,7 @@ function solver(problem_instance::String, client_socket::TCPSocket, given_initia
   if do_astar_insertion
     vd_info = VDInfo(dist, sets, membership, inf_val)
   else
-    vd_info = VDInfo(zeros(Bool, 1, 1), zeros(Bool, 1, 1))
+    vd_info = VDInfo(zeros(Int64, 1, 1), Vector{Vector{Int64}}(), zeros(Int64, 1), inf_val)
   end
 
 	while true
@@ -283,6 +284,20 @@ function solver(problem_instance::String, client_socket::TCPSocket, given_initia
   end
   proc_timer = (CPUtime_us() - start_proc_time)/1e6
   print_summary(lowest, timer, proc_timer, membership, param, tour_history, cost_mat_read_time, instance_read_time, num_trials_feasible, num_trials, false)
+
+  println("vd_info.update_ancestors_time ", vd_info.update_ancestors_time)
+  println("vd_info.open_pop_time ", vd_info.open_pop_time)
+  println("vd_info.closed_check_time ", vd_info.closed_check_time)
+  println("vd_info.closed_push_time ", vd_info.closed_push_time)
+  println("vd_info.ancestor_check_time ", vd_info.ancestor_check_time)
+  println("vd_info.inf_and_prune_check_time ", vd_info.inf_and_prune_check_time)
+  println("vd_info.succ_gen_time ", vd_info.succ_gen_time)
+  println("vd_info.succ_closed_time ", vd_info.succ_closed_time)
+  println("vd_info.seen_key_time ", vd_info.seen_key_time)
+  println("vd_info.seen_update_time ", vd_info.seen_update_time)
+  println("vd_info.open_push_time ", vd_info.open_push_time)
+  println("vd_info.goal_check_time ", vd_info.goal_check_time)
+
   return powers
 end
 

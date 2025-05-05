@@ -94,12 +94,12 @@ function remove_insert_astar(current::Tour, best::Tour, dist::AbstractArray{Int6
   if trial.tour[1] != 1
     trial.tour = [1; trial.tour]
     # TODO: don't need to do this unless we're comparing against GLNS insertion heuristics
-    # idx1 = findfirst(==(1), sets_to_insert)
-    # splice!(sets_to_insert, idx1)
+    idx1 = findfirst(==(1), sets_to_insert)
+    splice!(sets_to_insert, idx1)
   end
 
-	# trial.tour = astar_insertion!(dist, sets, member, inf_val, stop_time, vd_info, trial.tour, current.tour)
-	trial.tour = astar_insertion!(dist, sets, member, inf_val, stop_time, vd_info, trial.tour)
+	trial.tour = astar_insertion!(sets_to_insert, dist, sets, member, inf_val, stop_time, vd_info, trial.tour, current.tour)
+	# trial.tour = astar_insertion!(sets_to_insert, dist, sets, member, inf_val, stop_time, vd_info, trial.tour)
   if length(trial.tour) == 0
     # Means we timed out
     trial = current

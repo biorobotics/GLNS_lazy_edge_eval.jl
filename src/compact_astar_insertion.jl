@@ -1,4 +1,5 @@
 using DataStructures
+using FastPriorityQueues
 
 # VD is visitation DAG
 struct VDNode
@@ -16,7 +17,7 @@ function VDNode(tour_idx::Int64, parent::Vector{VDNode}, visited_removed_sets::V
   return VDNode(tour_idx, parent, visited_removed_sets, final_node_idx, (tour_idx, visited_removed_sets, final_node_idx), g_val, h_val, g_val + h_val)
 end
 
-mutable struct VDInfo
+struct VDInfo
   before::Array{Bool, 2}
   ancestors_per_set::Array{Bool,2}
   update_ancestors_time::Float64
@@ -35,6 +36,9 @@ end
 
 function VDInfo(dist::AbstractArray{Int64, 2}, sets::Vector{Vector{Int64}}, membership::Vector{Int64}, inf_val::Int64)
   vd_info = VDInfo(ones(Bool, length(membership), length(sets)), zeros(Bool, length(sets), length(sets)), zeros(12)...)
+  if length(sets) == 0
+    return vd_info
+  end
 
   for set_idx=1:length(sets)
     for node_idx=1:length(membership)
@@ -57,7 +61,10 @@ end
 function astar_insertion!(sets_to_insert::Vector{Int64}, dist::AbstractArray{Int64, 2}, sets::Vector{Vector{Int64}}, membership::Vector{Int64}, inf_val::Int64, stop_time::Float64, vd_info::VDInfo, partial_tour::Vector{Int64}, known_feas_tour::Vector{Int64})
   closed_list = Set{Tuple{Int64, Vector{Bool}, Int64}}()
 
-  open_list = PriorityQueue{VDNode, Int64}()
+  # open_list = PriorityQueue{VDNode, Int64}()
+  open_list = HeapPriorityQueue{VDNode, Int64}()
+  # open_list = SortedVectorPriorityQueue{VDNode, Int64}()
+  # open_list = VectorPriorityQueue{VDNode, Int64}()
   root_node = VDNode(1, Vector{VDNode}(), zeros(Bool, length(sets_to_insert)), 1, 0, 0)
   enqueue!(open_list, root_node, 0)
 
