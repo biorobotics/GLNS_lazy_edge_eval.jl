@@ -29,6 +29,24 @@ include("adaptive_powers.jl")
 include("insertion_deletion.jl")
 include("parameter_defaults.jl")
 
+function floyd_warshall!(dist, inf_val)
+  num_nodes = size(dist, 1)
+  # Can't use node 1 as pivot because it corresponds to traveling back in time
+  @inbounds for pivot in 2:num_nodes
+    # Relax dist[u, v] = min(dist[u, v], dist[u, pivot]+dist[pivot, v]) for all u, v
+    for v in 1:num_nodes
+      d = dist[pivot, v]
+      d == inf_val && continue
+      for u in 1:num_nodes
+        ans = (dist[u, pivot] == inf_val ? inf_val : dist[u, pivot] + d)
+        if dist[u, v] > ans
+          dist[u, v] = ans
+        end
+      end
+    end
+  end
+end
+
 """
 Main GTSP solver, which takes as input a problem instance and
 some optional arguments
@@ -38,6 +56,8 @@ function solver(problem_instance::String, client_socket::TCPSocket, given_initia
   if seed_rng
     Random.seed!(1234)
   end
+
+  # floyd_warshall!(dist, inf_val)
 
 	param = parameter_settings(num_vertices, num_sets, sets, problem_instance, args)
   if length(given_initial_tours) != 0
@@ -113,6 +133,15 @@ function solver(problem_instance::String, client_socket::TCPSocket, given_initia
   else
     vd_info = VDInfo(zeros(Int64, 1, 1), Vector{Vector{Int64}}(), zeros(Int64, 1), inf_val)
   end
+
+  #=
+  tour = astar_insertion!(collect(2:length(sets)), dist, sets, membership, inf_val, init_time + param[:max_time], vd_info, [1], [1])
+  cost = tour_cost(tour, dist)
+  println(time() - init_time)
+  println(tour)
+  println(cost)
+  @assert(false)
+  =#
 
 	while true
     if count[:cold_trial] > param[:cold_trials] && !stop_upon_budget
@@ -297,6 +326,21 @@ function solver(problem_instance::String, client_socket::TCPSocket, given_initia
   println("vd_info.seen_update_time ", vd_info.seen_update_time)
   println("vd_info.open_push_time ", vd_info.open_push_time)
   println("vd_info.goal_check_time ", vd_info.goal_check_time)
+
+  #=
+  println("sum ", vd_info.update_ancestors_time + 
+                  vd_info.open_pop_time + 
+                  vd_info.closed_check_time + 
+                  vd_info.closed_push_time + 
+                  vd_info.ancestor_check_time + 
+                  vd_info.inf_and_prune_check_time + 
+                  vd_info.succ_gen_time + 
+                  vd_info.succ_closed_time + 
+                  vd_info.seen_key_time + 
+                  vd_info.seen_update_time + 
+                  vd_info.open_push_time + 
+                  vd_info.goal_check_time)
+  =#
 
   return powers
 end
