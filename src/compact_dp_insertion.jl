@@ -9,12 +9,10 @@ struct VDNode
   final_node_idx::Int64
   key::Tuple{Int64, Vector{Bool}, Int64}
   g_val::Int64
-  h_val::Int64
-  f_val::Int64
 end
 
-function VDNode(tour_idx::Int64, parent::Vector{VDNode}, visited_removed_sets::Vector{Bool}, final_node_idx::Int64, g_val::Int64, h_val::Int64)
-  return VDNode(tour_idx, parent, visited_removed_sets, final_node_idx, (tour_idx, visited_removed_sets, final_node_idx), g_val, h_val, g_val + h_val)
+function VDNode(tour_idx::Int64, parent::Vector{VDNode}, visited_removed_sets::Vector{Bool}, final_node_idx::Int64, g_val::Int64)
+  return VDNode(tour_idx, parent, visited_removed_sets, final_node_idx, (tour_idx, visited_removed_sets, final_node_idx), g_val)
 end
 
 struct VDInfo
@@ -76,7 +74,7 @@ end
 function dp_insertion!(sets_to_insert::Vector{Int64}, dist::AbstractArray{Int64, 2}, sets::Vector{Vector{Int64}}, membership::Vector{Int64}, inf_val::Int64, stop_time::Float64, vd_info::VDInfo, partial_tour::Vector{Int64}, known_feas_tour::Vector{Int64})
   prev_nodes = Vector{VDNode}()
   cur_nodes = Vector{VDNode}()
-  root_node = VDNode(1, Vector{VDNode}(), zeros(Bool, length(sets_to_insert)), 1, 0, 0)
+  root_node = VDNode(1, Vector{VDNode}(), zeros(Bool, length(sets_to_insert)), 1, 0)
   push!(prev_nodes, root_node)
 
   #=
@@ -197,9 +195,7 @@ function dp_insertion!(sets_to_insert::Vector{Int64}, dist::AbstractArray{Int64,
 
       for (removed_set_idx, node_idx) in zip(neighbor_removed_sets, neighbors)
         # bt = time_ns()
-        # h_val = next_nonremoved_idx > length(partial_tour) ? 0 : dist[node_idx, partial_tour[next_nonremoved_idx]] + h_vals[next_nonremoved_idx]
-        h_val = 0
-        neighbor_node = VDNode(pop.tour_idx + 1, [pop], copy(pop.visited_removed_sets), node_idx, pop.g_val + dist[pop.final_node_idx, node_idx], h_val)
+        neighbor_node = VDNode(pop.tour_idx + 1, [pop], copy(pop.visited_removed_sets), node_idx, pop.g_val + dist[pop.final_node_idx, node_idx])
         if removed_set_idx != -1
           neighbor_node.visited_removed_sets[removed_set_idx] = true
           neighbor_node.key[2][removed_set_idx] = true
@@ -247,9 +243,9 @@ function dp_insertion!(sets_to_insert::Vector{Int64}, dist::AbstractArray{Int64,
     return Vector{Int64}()
   end
 
-  goal_node = VDNode(0, Vector{VDNode}(), zeros(Bool, 1), 1, typemax(Int64), 0)
+  goal_node = VDNode(0, Vector{VDNode}(), zeros(Bool, 1), 1, typemax(Int64))
   for node in cur_nodes
-    if node.f_val < goal_node.f_val
+    if node.g_val < goal_node.g_val
       goal_node = node
     end
   end
