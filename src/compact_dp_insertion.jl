@@ -122,7 +122,6 @@ function dp_insertion!(sets_to_insert::Vector{Int64}, dist::AbstractArray{Int64,
   =#
 
   # max_tour_idx = 0
-  goal_node = VDNode(0, Vector{VDNode}(), zeros(Bool, 1), 1, typemax(Int64), 0)
   for tour_idx=1:length(sets)-1
     empty!(cur_nodes)
     for pop in prev_nodes
@@ -236,18 +235,6 @@ function dp_insertion!(sets_to_insert::Vector{Int64}, dist::AbstractArray{Int64,
 
         # at = time_ns()
         # vd_info.seen_update_time += (at - bt)/1e9
-
-        # bt = time_ns()
-
-        # bt = time_ns()
-
-        # max_tour_idx = max(max_tour_idx, neighbor_node.tour_idx)
-        if neighbor_node.f_val < goal_node.f_val && neighbor_node.tour_idx == length(sets)
-          goal_node = neighbor_node
-        end
-
-        # at = time_ns()
-        # vd_info.goal_check_time += (at - bt)/1e9
       end
     end
     prev_nodes = [node for node in cur_nodes]
@@ -255,9 +242,16 @@ function dp_insertion!(sets_to_insert::Vector{Int64}, dist::AbstractArray{Int64,
   # println("max tour idx: ", max_tour_idx)
 
   # No solution
-  if goal_node.f_val == typemax(Int64)
+  if length(cur_nodes) == 0
     println("No solution found by A*")
     return Vector{Int64}()
+  end
+
+  goal_node = VDNode(0, Vector{VDNode}(), zeros(Bool, 1), 1, typemax(Int64), 0)
+  for node in cur_nodes
+    if node.f_val < goal_node.f_val
+      goal_node = node
+    end
   end
 
   tour = [goal_node.final_node_idx]
