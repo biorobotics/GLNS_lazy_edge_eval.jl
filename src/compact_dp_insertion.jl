@@ -128,34 +128,20 @@ function dp_insertion!(sets_to_insert::Vector{Int64}, dist::AbstractArray{Int64,
         return Vector{Int64}()
       end
 
-      this_sets = Vector{Int64}()
-      this_removed_sets = Vector{Int64}()
-      for removed_set_idx in removed_set_indices_per_tour_idx[pop.tour_idx + 1]
-        if pop.visited_removed_sets[removed_set_idx]
-          continue
-        end
-        set_idx = sets_to_insert[removed_set_idx]
-        push!(this_sets, set_idx)
-        push!(this_removed_sets, removed_set_idx)
-      end
+      unvisited_removed_sets = [removed_set_idx for removed_set_idx in removed_set_indices_per_tour_idx[pop.tour_idx + 1] if !pop.visited_removed_sets[removed_set_idx]]
 
       # Handle next non-removed set
       num_nonremoved_visited = pop.tour_idx - sum(pop.visited_removed_sets)
       next_nonremoved_idx = num_nonremoved_visited + 1
       next_nonremoved_set_idx = -1
       if next_nonremoved_idx <= length(partial_tour)
-        push!(this_sets, membership[partial_tour[next_nonremoved_idx]])
-        push!(this_removed_sets, -1)
-        next_nonremoved_set_idx = this_sets[end]
+        push!(unvisited_removed_sets, -1)
+        next_nonremoved_set_idx = membership[partial_tour[next_nonremoved_idx]]
       end
 
-      neighbors = Vector{Int64}()
-      neighbor_removed_sets = Vector{Int64}()
-
-      unvisited_removed_sets = findall(!, pop.visited_removed_sets)
-
-      for (removed_set_idx, set_idx) in zip(this_removed_sets, this_sets)
+      for removed_set_idx in unvisited_removed_sets
         # bt = time_ns()
+        set_idx = removed_set_idx == -1 ? next_nonremoved_set_idx : sets_to_insert[removed_set_idx]
 
         if next_nonremoved_set_idx != -1 && vd_info.before_set_to_set[set_idx, next_nonremoved_set_idx]
           continue
@@ -170,67 +156,64 @@ function dp_insertion!(sets_to_insert::Vector{Int64}, dist::AbstractArray{Int64,
           # Check if unvisited removed customer is in BEFORE[node_idx]. If so, prune
           prune = false
           for removed_set_idx2 in unvisited_removed_sets
-            set_idx2 = sets_to_insert[removed_set_idx2]
-            if vd_info.before[node_idx, set_idx2]
+            if removed_set_idx2 != -1 && vd_info.before[node_idx, sets_to_insert[removed_set_idx2]]
               prune = true
               break
             end
           end
           if prune
+            # vd_info.inf_and_prune_check_time += (at - bt)/1e9
             continue
           end
 
           # Check if unvisited nonremoved node is unreachable from node_idx. If so, prune
           if next_nonremoved_idx <= length(partial_tour) && node_idx != partial_tour[next_nonremoved_idx] && dist[node_idx, partial_tour[next_nonremoved_idx]] == inf_val
+            # vd_info.inf_and_prune_check_time += (at - bt)/1e9
             continue
           end
 
-          push!(neighbors, node_idx)
-          push!(neighbor_removed_sets, removed_set_idx)
-        end
+          # at = time_ns()
+          # vd_info.inf_and_prune_check_time += (at - bt)/1e9
 
-        # at = time_ns()
-        # vd_info.inf_and_prune_check_time += (at - bt)/1e9
-      end
+          # bt = time_ns()
+          neighbor_node = VDNode(pop.tour_idx + 1, [pop], copy(pop.visited_removed_sets), node_idx, pop.g_val + dist[pop.final_node_idx, node_idx])
+          if removed_set_idx != -1
+            neighbor_node.visited_removed_sets[removed_set_idx] = true
+            neighbor_node.key[2][removed_set_idx] = true
+          end
+          # at = time_ns()
+          # vd_info.succ_gen_time += (at - bt)/1e9
 
-      for (removed_set_idx, node_idx) in zip(neighbor_removed_sets, neighbors)
-        # bt = time_ns()
-        neighbor_node = VDNode(pop.tour_idx + 1, [pop], copy(pop.visited_removed_sets), node_idx, pop.g_val + dist[pop.final_node_idx, node_idx])
-        if removed_set_idx != -1
-          neighbor_node.visited_removed_sets[removed_set_idx] = true
-          neighbor_node.key[2][removed_set_idx] = true
-        end
-        # at = time_ns()
-        # vd_info.succ_gen_time += (at - bt)/1e9
-
-        # bt = time_ns()
-        contained_idx = -1
-        dominated = false
-        for (cur_node_idx, cur_node) in enumerate(cur_nodes)
-          if neighbor_node.key[3] == cur_node.key[3] && neighbor_node.key[2] == cur_node.key[2]
-            contained_idx = cur_node_idx
-            if cur_node.g_val <= neighbor_node.g_val
-              dominated = true
-              break
+          # bt = time_ns()
+          contained_idx = -1
+          dominated = false
+          for (cur_node_idx, cur_node) in enumerate(cur_nodes)
+            if neighbor_node.key[3] == cur_node.key[3] && neighbor_node.key[2] == cur_node.key[2]
+              contained_idx = cur_node_idx
+              if cur_node.g_val <= neighbor_node.g_val
+                dominated = true
+                break
+              end
             end
           end
-        end
-        # at = time_ns()
-        # vd_info.seen_key_time += (at - bt)/1e9
-        if dominated
-          continue
-        end
+          # at = time_ns()
+          # vd_info.seen_key_time += (at - bt)/1e9
+          if dominated
+            continue
+          end
 
-        # bt = time_ns()
+          # bt = time_ns()
 
-        if contained_idx == -1
-          push!(cur_nodes, neighbor_node)
-        else
-          cur_nodes[contained_idx] = neighbor_node
+          if contained_idx == -1
+            push!(cur_nodes, neighbor_node)
+          else
+            cur_nodes[contained_idx] = neighbor_node
+          end
+
+          # at = time_ns()
+          # vd_info.seen_update_time += (at - bt)/1e9
+
         end
-
-        # at = time_ns()
-        # vd_info.seen_update_time += (at - bt)/1e9
       end
     end
     prev_nodes = [node for node in cur_nodes]
