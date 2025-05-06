@@ -20,8 +20,7 @@ using NPZ
 using CPUTime
 using ThreadPinning
 using Base.Threads
-# include("astar_insertion.jl")
-include("compact_astar_insertion.jl")
+include("compact_dp_insertion.jl")
 include("utilities.jl")
 include("parse_print.jl")
 include("tour_optimizations.jl")
@@ -131,8 +130,8 @@ function solver(problem_instance::String, client_socket::TCPSocket, given_initia
 
   stop_upon_budget = param[:budget] != typemin(Int64)
 
-  do_astar_insertion = true
-  if do_astar_insertion
+  do_dp_insertion = true
+  if do_dp_insertion
     # vd_info = VDInfo(dist, sets, membership, inf_val, param[:max_removals])
     # vd_info = VDInfo(dist, sets, membership, inf_val, num_sets)
     vd_info = VDInfo(dist, sets, membership, inf_val)
@@ -188,8 +187,8 @@ function solver(problem_instance::String, client_socket::TCPSocket, given_initia
 				if iter_count > param[:num_iterations]/2 && phase == :early
 					phase = :mid  # move to mid phase after half iterations
 				end
-        if do_astar_insertion
-          trial, triangle_violation = remove_insert_astar(current, best, dist, membership, setdist, sets, powers, param, phase, inf_val, init_time + param[:max_time], vd_info)
+        if do_dp_insertion
+          trial, triangle_violation = remove_insert_dp(current, best, dist, membership, setdist, sets, powers, param, phase, inf_val, init_time + param[:max_time], vd_info)
           if triangle_violation
             param[:timeout] = (time() - init_time > param[:max_time])
             param[:budget_met] = best.cost <= param[:budget]

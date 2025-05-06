@@ -65,7 +65,7 @@ function remove_insert(current::Tour, best::Tour, dist::AbstractArray{Int64,2}, 
 	return trial
 end
 
-function remove_insert_astar(current::Tour, best::Tour, dist::AbstractArray{Int64,2}, member::Array{Int64,1},
+function remove_insert_dp(current::Tour, best::Tour, dist::AbstractArray{Int64,2}, member::Array{Int64,1},
 						setdist::Distsv, sets::Vector{Vector{Int64}},
 						powers, param::Dict{Symbol,Any}, phase::Symbol, inf_val::Int64, stop_time::Float64, vd_info::VDInfo)
   if current.cost >= inf_val
@@ -99,9 +99,7 @@ function remove_insert_astar(current::Tour, best::Tour, dist::AbstractArray{Int6
     # sort!(sets_to_insert)
   end
 
-	# trial.tour = astar_insertion!(sets_to_insert, dist, sets, member, inf_val, stop_time, vd_info, trial.tour, current.tour, current.cost)
-	trial.tour = astar_insertion!(sets_to_insert, dist, sets, member, inf_val, stop_time, vd_info, trial.tour, current.tour)
-	# trial.tour = astar_insertion!(sets_to_insert, dist, sets, member, inf_val, stop_time, vd_info, trial.tour)
+	trial.tour = dp_insertion!(sets_to_insert, dist, sets, member, inf_val, stop_time, vd_info, trial.tour, current.tour)
   if length(trial.tour) == 0
     # Means we timed out
     trial = current
