@@ -51,8 +51,6 @@ function VDInfo(dist::AbstractArray{Int64, 2}, sets::Vector{Vector{Int64}}, memb
       end
     end
   end
-  # at = time_ns()
-  # vd_info.before_time += (at - bt)/1e9
 
   for node_idx = 2:length(membership)
     vd_info.before[node_idx, membership[node_idx]] = false
@@ -63,11 +61,12 @@ function VDInfo(dist::AbstractArray{Int64, 2}, sets::Vector{Vector{Int64}}, memb
       if set_idx1 == set_idx2
         continue
       end
-      if all(vd_info.before[sets[set_idx1], set_idx2])
-        vd_info.before_set_to_set[set_idx1, set_idx2] = true
-      end
+      vd_info.before_set_to_set[set_idx1, set_idx2] = all(vd_info.before[sets[set_idx1], set_idx2])
     end
   end
+
+  # at = time_ns()
+  # vd_info.before_time += (at - bt)/1e9
 
   return vd_info
 end
