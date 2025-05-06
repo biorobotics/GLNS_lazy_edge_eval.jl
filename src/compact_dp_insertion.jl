@@ -212,7 +212,7 @@ function dp_insertion!(sets_to_insert::Vector{Int64}, dist::AbstractArray{Int64,
         contained_idx = -1
         dominated = false
         for (cur_node_idx, cur_node) in enumerate(cur_nodes)
-          if neighbor_node.key == cur_node.key
+          if neighbor_node.key[3] == cur_node.key[3] && neighbor_node.key[2] == cur_node.key[2]
             contained_idx = cur_node_idx
             if cur_node.g_val <= neighbor_node.g_val
               dominated = true
