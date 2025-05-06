@@ -93,7 +93,6 @@ function remove_insert_dp(current::Tour, best::Tour, dist::AbstractArray{Int64,2
 
   if trial.tour[1] != 1
     trial.tour = [1; trial.tour]
-    # TODO: don't need to do this unless we're comparing against GLNS insertion heuristics
     idx1 = findfirst(==(1), sets_to_insert)
     splice!(sets_to_insert, idx1)
     # sort!(sets_to_insert)
