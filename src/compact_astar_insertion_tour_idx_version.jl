@@ -123,6 +123,7 @@ function astar_insertion!(sets_to_insert::Vector{Int64}, dist::AbstractArray{Int
       vd_info.before_set_to_set_restricted[set_idx, :] = vd_info.before_set_to_set[set_idx, :] .|| vd_info.before_set_to_set_restricted[prev_set_idx]
       vd_info.before_set_to_set_restricted[set_idx, prev_set_idx] = true
     end
+    prev_set_idx = set_idx
   end
 
   # Compute ancestors of removed sets
@@ -212,9 +213,11 @@ function astar_insertion!(sets_to_insert::Vector{Int64}, dist::AbstractArray{Int
     # Handle next non-removed set
     num_nonremoved_visited = pop.tour_idx - sum(pop.visited_removed_sets)
     next_nonremoved_idx = num_nonremoved_visited + 1
+    next_nonremoved_set_idx = -1
     if next_nonremoved_idx <= length(partial_tour)
       push!(this_sets, membership[partial_tour[next_nonremoved_idx]])
       push!(this_removed_sets, -1)
+      next_nonremoved_set_idx = this_sets[end]
     end
 
     neighbors = Vector{Int64}()
@@ -224,6 +227,10 @@ function astar_insertion!(sets_to_insert::Vector{Int64}, dist::AbstractArray{Int
 
     for (removed_set_idx, set_idx) in zip(this_removed_sets, this_sets)
       # bt = time_ns()
+
+      if next_nonremoved_set_idx != -1 && vd_info.before_set_to_set[set_idx, next_nonremoved_set_idx]
+        continue
+      end
 
       this_set = removed_set_idx == -1 ? [partial_tour[next_nonremoved_idx]] : sets[set_idx]
       for node_idx in this_set
