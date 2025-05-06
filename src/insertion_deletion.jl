@@ -96,16 +96,21 @@ function remove_insert_astar(current::Tour, best::Tour, dist::AbstractArray{Int6
     # TODO: don't need to do this unless we're comparing against GLNS insertion heuristics
     idx1 = findfirst(==(1), sets_to_insert)
     splice!(sets_to_insert, idx1)
+    # sort!(sets_to_insert)
   end
 
+	# trial.tour = astar_insertion!(sets_to_insert, dist, sets, member, inf_val, stop_time, vd_info, trial.tour, current.tour, current.cost)
 	trial.tour = astar_insertion!(sets_to_insert, dist, sets, member, inf_val, stop_time, vd_info, trial.tour, current.tour)
 	# trial.tour = astar_insertion!(sets_to_insert, dist, sets, member, inf_val, stop_time, vd_info, trial.tour)
   if length(trial.tour) == 0
     # Means we timed out
     trial = current
+    #=
     if time() <= stop_time
       throw("A* insertion failed even though we started with a feasible tour and did not run out of time")
     end
+    =#
+    return trial, true
   else
     trial.cost = tour_cost(trial.tour, dist)
     if trial.cost >= inf_val
@@ -153,7 +158,7 @@ function remove_insert_astar(current::Tour, best::Tour, dist::AbstractArray{Int6
 	score = 100 * max(current.cost - trial.cost, 0)/current.cost
 	removal.scores[phase] += score
 	removal.count[phase] += 1
-	return trial
+	return trial, false
 end
 
 

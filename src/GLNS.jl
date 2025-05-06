@@ -80,6 +80,10 @@ function solver(problem_instance::String, client_socket::TCPSocket, given_initia
     confirmed_dist = zeros(Bool, 1, 1)
   end
 
+  for i=1:length(membership)
+    dist[i, i] = 0
+  end
+
 	count = Dict(:latest_improvement => 1,
 	  			 :first_improvement => false,
 	 		     :warm_trial => 0,
@@ -129,6 +133,8 @@ function solver(problem_instance::String, client_socket::TCPSocket, given_initia
 
   do_astar_insertion = true
   if do_astar_insertion
+    # vd_info = VDInfo(dist, sets, membership, inf_val, param[:max_removals])
+    # vd_info = VDInfo(dist, sets, membership, inf_val, num_sets)
     vd_info = VDInfo(dist, sets, membership, inf_val)
   else
     vd_info = VDInfo(zeros(Int64, 1, 1), Vector{Vector{Int64}}(), zeros(Int64, 1), inf_val)
@@ -183,7 +189,26 @@ function solver(problem_instance::String, client_socket::TCPSocket, given_initia
 					phase = :mid  # move to mid phase after half iterations
 				end
         if do_astar_insertion
-          trial = remove_insert_astar(current, best, dist, membership, setdist, sets, powers, param, phase, inf_val, init_time + param[:max_time], vd_info)
+          trial, triangle_violation = remove_insert_astar(current, best, dist, membership, setdist, sets, powers, param, phase, inf_val, init_time + param[:max_time], vd_info)
+          if triangle_violation
+            param[:timeout] = (time() - init_time > param[:max_time])
+            param[:budget_met] = best.cost <= param[:budget]
+            timer = (time_ns() - start_time)/1.0e9
+            lowest.cost > best.cost && (lowest = best)
+            if param[:output_file] != "None"
+              push!(tour_history, (round((time_ns() - start_time_for_tour_history)/1.0e9, digits=3), lowest.tour, lowest.cost))
+            end
+
+            if run_perf && occursin("custom0", problem_instance)
+              @assert(perf_pid != -1)
+              run(`kill -2 $perf_pid`)
+            end
+
+            print_best(count, param, best, lowest, init_time)
+            proc_timer = (CPUtime_us() - start_proc_time)/1e6
+            print_summary(lowest, timer, proc_timer, membership, param, tour_history, cost_mat_read_time, instance_read_time, num_trials_feasible, num_trials, true)
+            return powers
+          end
         else
           trial = remove_insert(current, best, dist, membership, setdist, sets, powers, param, phase)
         end
@@ -315,10 +340,11 @@ function solver(problem_instance::String, client_socket::TCPSocket, given_initia
   print_summary(lowest, timer, proc_timer, membership, param, tour_history, cost_mat_read_time, instance_read_time, num_trials_feasible, num_trials, false)
 
   #=
+  println("vd_info.before_time ", vd_info.before_time)
+  println("vd_info.before_update_time ", vd_info.before_update_time)
   println("vd_info.open_pop_time ", vd_info.open_pop_time)
   println("vd_info.closed_check_time ", vd_info.closed_check_time)
   println("vd_info.closed_push_time ", vd_info.closed_push_time)
-  println("vd_info.ancestor_check_time ", vd_info.ancestor_check_time)
   println("vd_info.inf_and_prune_check_time ", vd_info.inf_and_prune_check_time)
   println("vd_info.succ_gen_time ", vd_info.succ_gen_time)
   println("vd_info.succ_closed_time ", vd_info.succ_closed_time)
@@ -326,10 +352,11 @@ function solver(problem_instance::String, client_socket::TCPSocket, given_initia
   println("vd_info.seen_update_time ", vd_info.seen_update_time)
   println("vd_info.open_push_time ", vd_info.open_push_time)
   println("vd_info.goal_check_time ", vd_info.goal_check_time)
-  println("sum ", vd_info.open_pop_time + 
+  println("sum ", vd_info.before_time + 
+                  vd_info.before_update_time + 
+                  vd_info.open_pop_time + 
                   vd_info.closed_check_time + 
                   vd_info.closed_push_time + 
-                  vd_info.ancestor_check_time + 
                   vd_info.inf_and_prune_check_time + 
                   vd_info.succ_gen_time + 
                   vd_info.succ_closed_time + 
