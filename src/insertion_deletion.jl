@@ -111,7 +111,6 @@ function remove_insert_dp(current::Tour, best::Tour, dist::AbstractArray{Int64,2
   else
     trial.cost = tour_cost(trial.tour, dist)
     if trial.cost >= inf_val
-      throw("DP insertion gave infinite cost tour")
       # Check if we took an infinite cost edge. Since inf_val equals the cost of the incumbent + 1,
       # it's possible that the triangle inequality violation makes DP give a higher-cost tour than the
       # incumbent, and thus the total cost might be >= inf_val
