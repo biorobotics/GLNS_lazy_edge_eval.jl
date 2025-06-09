@@ -107,7 +107,7 @@ function remove_insert_dp(current::Tour, best::Tour, dist::AbstractArray{Int64,2
       throw("A* insertion failed even though we started with a feasible tour and did not run out of time")
     end
     =#
-    return trial, true
+    # return trial, true
   else
     trial.cost = tour_cost(trial.tour, dist)
     if trial.cost >= inf_val
@@ -126,7 +126,7 @@ function remove_insert_dp(current::Tour, best::Tour, dist::AbstractArray{Int64,2
         throw("DP insertion gave infinite cost tour")
       else
         trial = current
-        return trial, true
+        # return trial, true
       end
     end
   end
