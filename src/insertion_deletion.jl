@@ -69,7 +69,20 @@ function remove_insert_dp(current::Tour, best::Tour, dist::AbstractArray{Int64,2
 						setdist::Distsv, sets::Vector{Vector{Int64}},
 						powers, param::Dict{Symbol,Any}, phase::Symbol, inf_val::Int64, stop_time::Float64, vd_info::VDInfo)
   if current.cost >= inf_val
-    throw("Trying to repair infeasible tour using A*")
+    # Check if we took an infinite cost edge. When doing lazy edge evaluation in IRG, we can update the best tour
+    # to one with slightly lower cost, but when we add up the rounded edge costs, we actually get something worse than the incumbent.
+    # However, if we take an infinite-cost edge, there really must be a bug
+    inf_edge = false
+    for (node_idx1, node_idx2) in zip(current.tour[1:end-1], current.tour[2:end])
+      if dist[node_idx1, node_idx2] == inf_val
+        inf_edge = true
+        break
+      end
+    end
+    inf_edge |= (dist[trial.tour[end], trial.tour[1]] == inf_val)
+    if inf_edge
+      throw("Trying to repair infeasible tour using DP")
+    end
   end
 
   # I'm doing this to avoid headaches of figuring out where node 1 used to be after removing it
