@@ -18,7 +18,7 @@ removal followed by insertion on tour.  Operation done in place.
 """
 function remove_insert(current::Tour, best::Tour, dist::AbstractArray{Int64,2}, member::Array{Int64,1},
 						setdist::Distsv, sets::Vector{Vector{Int64}},
-						powers, param::Dict{Symbol,Any}, phase::Symbol, removal_count_per_cluster::Vector{Int64})
+						powers, param::Dict{Symbol,Any}, phase::Symbol, removal_count_per_cluster::Vector{Int64}, inf_val::Int64)
 	# make a new tour to perform the insertion and deletion on
     trial = Tour(copy(current.tour), current.cost)
 	pivot_tour!(trial.tour)
@@ -43,14 +43,14 @@ function remove_insert(current::Tour, best::Tour, dist::AbstractArray{Int64,2}, 
 	insertion = power_select(powers["insertions"], powers["insertion_total"], phase)
 	noise = power_select(powers["noise"], powers["noise_total"], phase)
 	if insertion.name == "cheapest"
-		cheapest_insertion!(trial.tour, sets_to_insert, dist, setdist, sets)
+		cheapest_insertion!(trial.tour, sets_to_insert, dist, setdist, sets, inf_val)
 	else
 		randpdf_insertion!(trial.tour, sets_to_insert, dist, setdist, sets,
-							insertion.value, noise)
+							insertion.value, noise, inf_val)
 	end
 
   if rand() < param[:prob_reopt]
-    opt_cycle!(trial, dist, sets, member, param, setdist, "partial")
+    opt_cycle!(trial, dist, sets, member, param, setdist, "partial", inf_val)
   else
     trial.cost = tour_cost(trial.tour, dist)
   end
@@ -113,7 +113,7 @@ end
 """  choose set with pdf_select, and then insert in best place with noise  """
 function randpdf_insertion!(tour::Array{Int64,1}, sets_to_insert::Array{Int64,1},
 							dist::AbstractArray{Int64,2}, setdist::Distsv,
-							sets::Vector{Vector{Int64}}, power::Float64, noise::Power)
+							sets::Vector{Vector{Int64}}, power::Float64, noise::Power, inf_val::Int64)
 
     mindist = [typemax(Int64) for i=1:length(sets_to_insert)]
     @inbounds for i = 1:length(sets_to_insert)
@@ -140,10 +140,10 @@ function randpdf_insertion!(tour::Array{Int64,1}, sets_to_insert::Array{Int64,1}
         nearest_set = sets_to_insert[set_index]
 		if noise.name == "subset"
 			bestv, bestpos = insert_subset_lb(tour, dist, sets[nearest_set], nearest_set,
-											  setdist, noise.value)
+											  setdist, noise.value, inf_val)
 		else
 			bestv, bestpos =
-					insert_lb(tour, dist, sets[nearest_set], nearest_set, setdist, noise.value)
+					insert_lb(tour, dist, sets[nearest_set], nearest_set, setdist, noise.value, inf_val)
 		end
         insert!(tour, bestpos, bestv)  # perform the insertion
         new_vertex_in_tour = bestv
@@ -155,7 +155,7 @@ end
 
 
 function cheapest_insertion!(tour::Array{Int64,1}, sets_to_insert::Array{Int64,1},
-	dist::AbstractArray{Int64,2}, setdist::Distsv, sets::Vector{Vector{Int64}})
+	dist::AbstractArray{Int64,2}, setdist::Distsv, sets::Vector{Vector{Int64}}, inf_val::Int64)
     """
 	choose vertex that can be inserted most cheaply, and insert it in that position
 	"""
@@ -168,7 +168,7 @@ function cheapest_insertion!(tour::Array{Int64,1}, sets_to_insert::Array{Int64,1
             set_ind = sets_to_insert[i]
             # find the best place to insert the vertex
             best_v, best_pos, cost = insert_cost_lb(tour, dist, sets[set_ind], set_ind, setdist,
-										  best_v, best_pos, best_cost)
+										  best_v, best_pos, best_cost, inf_val)
 			if cost < best_cost
 				best_set = i
 				best_cost = cost
@@ -189,11 +189,12 @@ insertion cost, along with the position of this insertion in the tour.  If
 best_position is i, then vertex should be inserted between tour[i-1] and tour[i].
 """
 @inline function insert_lb(tour::Array{Int64,1}, dist::AbstractArray{Int64,2}, set::Array{Int64, 1},
-							setind::Int, setdist::Distsv, noise::Float64)
+							setind::Int, setdist::Distsv, noise::Float64, inf_val::Int64)
 	best_cost = typemax(Int64)
 	bestv = 0
 	bestpos = 0
 
+  #=
 	@inbounds for i = 1:length(tour)
 		v1 = prev_tour(tour, i)
 		lb = setdist.vert_set[v1, setind] + setdist.set_vert[setind, tour[i]] - dist[v1, tour[i]]
@@ -210,16 +211,41 @@ best_position is i, then vertex should be inserted between tour[i-1] and tour[i]
 		end
     end
     return bestv, bestpos
+  =#
+
+  for v in set
+    found_finite = false
+    @inbounds for i = 1:length(tour)
+      v1 = prev_tour(tour, i)
+      insert_cost = dist[v1, v] + dist[v, tour[i]] - dist[v1, tour[i]]
+      noise > 0.0 && (insert_cost += round(Int64, noise * rand() * abs(insert_cost)))
+      if insert_cost < best_cost
+        best_cost = insert_cost
+        bestv = v
+        bestpos = i
+      end
+      if dist[v1, v] < inf_val && dist[v, tour[i]] < inf_val && v != 1
+        if found_finite
+          throw("There are multiple insertion positions with finite cost")
+        end
+        # found_finite = true
+        # break
+      end
+    end
+  end
+  return bestv, bestpos
+
 end
 
 
 @inline function insert_subset_lb(tour::Array{Int64,1}, dist::AbstractArray{Int64,2}, set::Array{Int64, 1},
-							setind::Int, setdist::Distsv, noise::Float64)
+							setind::Int, setdist::Distsv, noise::Float64, inf_val::Int64)
 	best_cost = typemax(Int64)
 	bestv = 0
 	bestpos = 0
 	tour_inds = collect(1:length(tour))
 
+  #=
 	@inbounds for i = 1:ceil(Int64, length(tour) * noise)
 		i = incremental_shuffle!(tour_inds, i)
 		v1 = prev_tour(tour, i)
@@ -236,6 +262,31 @@ end
 		end
     end
     return bestv, bestpos
+  =#
+
+  for v in set
+    found_finite = false
+    @inbounds for i = 1:ceil(Int64, length(tour) * noise)
+      i = incremental_shuffle!(tour_inds, i)
+      v1 = prev_tour(tour, i)
+
+      insert_cost = dist[v1, v] + dist[v, tour[i]] - dist[v1, tour[i]]
+      if insert_cost < best_cost
+        best_cost = insert_cost
+        bestv = v
+        bestpos = i
+      end
+
+      if dist[v1, v] < inf_val && dist[v, tour[i]] < inf_val && v != 1
+        if found_finite
+          throw("There are multiple insertion positions with finite cost")
+        end
+        found_finite = true
+        # break
+      end
+    end
+  end
+  return bestv, bestpos
 end
 
 

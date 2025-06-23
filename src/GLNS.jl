@@ -146,7 +146,7 @@ function solver(problem_instance::String, client_socket::TCPSocket, given_initia
 				if iter_count > param[:num_iterations]/2 && phase == :early
 					phase = :mid  # move to mid phase after half iterations
 				end
-				trial = remove_insert(current, best, dist, membership, setdist, sets, powers, param, phase, removal_count_per_cluster)
+				trial = remove_insert(current, best, dist, membership, setdist, sets, powers, param, phase, removal_count_per_cluster, inf_val)
 
 				if trial.cost < best.cost
           if param[:lazy_edge_eval] == 1
@@ -169,7 +169,7 @@ function solver(problem_instance::String, client_socket::TCPSocket, given_initia
         # decide whether or not to accept trial
 				if accepttrial_noparam(trial.cost, current.cost, param[:prob_accept]) ||
 				   accepttrial(trial.cost, current.cost, temperature)
-					param[:mode] == "slow" && opt_cycle!(trial, dist, sets, membership, param, setdist, "full")
+					param[:mode] == "slow" && opt_cycle!(trial, dist, sets, membership, param, setdist, "full", inf_val)
 				  current = trial
 		    end
 
@@ -182,7 +182,7 @@ function solver(problem_instance::String, client_socket::TCPSocket, given_initia
 					best = current
           prev_best_cost = best.cost
           prev_best_tour = best.tour
-					opt_cycle!(best, dist, sets, membership, param, setdist, "full")
+					opt_cycle!(best, dist, sets, membership, param, setdist, "full", inf_val)
           if param[:lazy_edge_eval] == 1
             eval_edges!(best, dist, confirmed_dist, client_socket, setdist, num_sets, membership)
             if best.cost > prev_best_cost
