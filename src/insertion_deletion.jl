@@ -18,7 +18,7 @@ removal followed by insertion on tour.  Operation done in place.
 """
 function remove_insert(current::Tour, best::Tour, dist::AbstractArray{Int64,2}, member::Array{Int64,1},
 						setdist::Distsv, sets::Vector{Vector{Int64}},
-						powers, param::Dict{Symbol,Any}, phase::Symbol)
+						powers, param::Dict{Symbol,Any}, phase::Symbol, removal_count_per_cluster::Vector{Int64})
 	# make a new tour to perform the insertion and deletion on
     trial = Tour(copy(current.tour), current.cost)
 	pivot_tour!(trial.tour)
@@ -36,6 +36,9 @@ function remove_insert(current::Tour, best::Tour, dist::AbstractArray{Int64,2}, 
 	end
 
 	randomize_sets!(sets, sets_to_insert)
+  for set_idx in sets_to_insert
+    removal_count_per_cluster[set_idx] += 1
+  end
 	# then perform insertion
 	insertion = power_select(powers["insertions"], powers["insertion_total"], phase)
 	noise = power_select(powers["noise"], powers["noise_total"], phase)

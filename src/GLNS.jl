@@ -105,6 +105,8 @@ function solver(problem_instance::String, client_socket::TCPSocket, given_initia
 
   stop_upon_budget = param[:budget] != typemin(Int64)
 
+  removal_count_per_cluster = zeros(Int64, num_sets)
+
 	while true
     if count[:cold_trial] > param[:cold_trials] && !stop_upon_budget
       break
@@ -144,7 +146,7 @@ function solver(problem_instance::String, client_socket::TCPSocket, given_initia
 				if iter_count > param[:num_iterations]/2 && phase == :early
 					phase = :mid  # move to mid phase after half iterations
 				end
-				trial = remove_insert(current, best, dist, membership, setdist, sets, powers, param, phase)
+				trial = remove_insert(current, best, dist, membership, setdist, sets, powers, param, phase, removal_count_per_cluster)
 
 				if trial.cost < best.cost
           if param[:lazy_edge_eval] == 1
@@ -209,7 +211,7 @@ function solver(problem_instance::String, client_socket::TCPSocket, given_initia
 
 					print_best(count, param, best, lowest, init_time)
           proc_timer = (CPUtime_us() - start_proc_time)/1e6
-					print_summary(lowest, timer, proc_timer, membership, param, tour_history, cost_mat_read_time, instance_read_time, num_trials_feasible, num_trials, true)
+					print_summary(lowest, timer, proc_timer, membership, param, tour_history, cost_mat_read_time, instance_read_time, num_trials_feasible, num_trials, true, removal_count_per_cluster)
           return powers
 				end
 
@@ -249,7 +251,7 @@ function solver(problem_instance::String, client_socket::TCPSocket, given_initia
 
         print_best(count, param, best, lowest, init_time)
         proc_timer = (CPUtime_us() - start_proc_time)/1e6
-        print_summary(lowest, timer, proc_timer, membership, param, tour_history, cost_mat_read_time, instance_read_time, num_trials_feasible, num_trials, true)
+        print_summary(lowest, timer, proc_timer, membership, param, tour_history, cost_mat_read_time, instance_read_time, num_trials_feasible, num_trials, true, removal_count_per_cluster)
         return powers
       end
 		end
@@ -270,7 +272,7 @@ function solver(problem_instance::String, client_socket::TCPSocket, given_initia
     run(`kill -2 $perf_pid`)
   end
   proc_timer = (CPUtime_us() - start_proc_time)/1e6
-  print_summary(lowest, timer, proc_timer, membership, param, tour_history, cost_mat_read_time, instance_read_time, num_trials_feasible, num_trials, false)
+  print_summary(lowest, timer, proc_timer, membership, param, tour_history, cost_mat_read_time, instance_read_time, num_trials_feasible, num_trials, false, removal_count_per_cluster)
   return powers
 end
 
