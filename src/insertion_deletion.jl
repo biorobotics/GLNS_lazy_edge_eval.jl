@@ -91,6 +91,9 @@ function remove_insert_dp(current::Tour, best::Tour, dist::AbstractArray{Int64,2
 
 	# make a new tour to perform the insertion and deletion on
   trial = Tour(copy(current.tour), current.cost)
+
+  prev_cost = trial.cost
+
 	num_removals = rand(param[:min_removals]:param[:max_removals])
 
 	removal = power_select(powers["removals"], powers["removal_total"], phase)
@@ -111,7 +114,7 @@ function remove_insert_dp(current::Tour, best::Tour, dist::AbstractArray{Int64,2
     # sort!(sets_to_insert)
   end
 
-	trial.tour = dp_insertion!(sets_to_insert, dist, sets, member, inf_val, stop_time, vd_info, trial.tour, current.tour)
+	trial.tour = dp_insertion!(sets_to_insert, dist, sets, member, inf_val, stop_time, vd_info, trial.tour, prev_cost)
   if length(trial.tour) == 0
     # Means we timed out
     trial = current

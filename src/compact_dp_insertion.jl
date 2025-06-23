@@ -71,24 +71,18 @@ end
 
 # Note: this whole function assumes open tsp, doesn't account for cost of returning to depot.
 # Not a fundamental limitation, I just didn't implement it to handle closed TSP
-function dp_insertion!(sets_to_insert::Vector{Int64}, dist::AbstractArray{Int64, 2}, sets::Vector{Vector{Int64}}, membership::Vector{Int64}, inf_val::Int64, stop_time::Float64, vd_info::VDInfo, partial_tour::Vector{Int64}, known_feas_tour::Vector{Int64})
+function dp_insertion!(sets_to_insert::Vector{Int64}, dist::AbstractArray{Int64, 2}, sets::Vector{Vector{Int64}}, membership::Vector{Int64}, inf_val::Int64, stop_time::Float64, vd_info::VDInfo, partial_tour::Vector{Int64}, ub::Int64)
   prev_nodes = Vector{VDNode}()
   cur_nodes = Vector{VDNode}()
   root_node = VDNode(1, Vector{VDNode}(), zeros(Bool, length(sets_to_insert)), 1, 0)
   push!(prev_nodes, root_node)
 
-  #=
-  known_key = (0, zeros(Bool, length(sets_to_insert)), 0)
-  known_keys = Vector{Tuple{Int64, Vector{Bool}, Int64}}()
-  for node_idx in known_feas_tour
-    known_key = (known_key[1] + 1, copy(known_key[2]), node_idx)
-    if !(node_idx in partial_tour)
-      known_key[2][findfirst(==(membership[node_idx]), sets_to_insert)] = true
-    end
-    push!(known_keys, known_key)
-    println(known_key)
+  # When the next unvisted index in partial_tour is tour_idx, the h value is dist[node_idx, partial_tour[tour_idx]] + h_vals[tour_idx]
+  h_vals = Vector{Int64}(undef, length(partial_tour))
+  h_vals[length(partial_tour)] = 0
+  for tour_idx=length(partial_tour)-1:-1:1
+    h_vals[tour_idx] = dist[partial_tour[tour_idx], partial_tour[tour_idx + 1]] + h_vals[tour_idx + 1]
   end
-  =#
 
   # bt = time_ns()
 
@@ -149,6 +143,11 @@ function dp_insertion!(sets_to_insert::Vector{Int64}, dist::AbstractArray{Int64,
 
         this_set = removed_set_idx == -1 ? [partial_tour[next_nonremoved_idx]] : sets[set_idx]
         for node_idx in this_set
+          h_val = num_nonremoved_visited == length(partial_tour) ? 0 : dist[node_idx, partial_tour[next_nonremoved_idx]] + h_vals[next_nonremoved_idx]
+          if pop.g_val + dist[pop.final_node_idx, node_idx] + h_val >= ub
+            continue
+          end
+
           if dist[pop.final_node_idx, node_idx] == inf_val
             continue
           end
@@ -222,7 +221,7 @@ function dp_insertion!(sets_to_insert::Vector{Int64}, dist::AbstractArray{Int64,
 
   # No solution
   if length(cur_nodes) == 0
-    println("No solution found by A*")
+    # println("No solution found by DP")
     return Vector{Int64}()
   end
 
